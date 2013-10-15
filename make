@@ -3,7 +3,25 @@ export USE_CCACHE=1
 export ARCH=arm
 export PATH=${PATH}:~/toolchain/linaro-4.8/bin
 export CROSS_COMPILE=arm-linux-gnueabihf-
-config=g2-custom_defconfig
+ramdisk=ramdisk
+
+select CHOICE in d800 d801 d802 d803
+do
+case "$CHOICE" in
+    "d800")
+         config=d800-custom_defconfig
+         break;;
+    "d801")
+         config=d801-custom_defconfig
+         break;;
+    "d802")
+         config=d802-custom_defconfig
+         break;;
+    "d803")
+         config=d803-custom_defconfig
+         break;;
+  esac
+done
 
 if [ ! -f out/zImage ]
 then
@@ -48,12 +66,12 @@ then
   fi
 fi
 
-if [ -d ramdisk ]
+if [ -d $ramdisk ]
 then
 	mkdir -p out/boot
 	mv out/zImage out/boot
 	cp scripts/mkbootimg out/boot
-	./scripts/mkbootfs ramdisk | gzip > ramdisk.gz
+	./scripts/mkbootfs $ramdisk | gzip > ramdisk.gz
 	mv ramdisk.gz out/boot
 	./scripts/dtbTool -s 2048 -o out/boot/dt.img out/kernel/arch/arm/boot/
 	cd out/boot
