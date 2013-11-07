@@ -1,8 +1,8 @@
 #!/bin/bash
 export USE_CCACHE=1
 export ARCH=arm
-export PATH=${PATH}:~/toolchain/android-4.6/bin
-export CROSS_COMPILE=arm-eabi-
+export PATH=${PATH}:~/toolchain/linaro-4.8/bin
+export CROSS_COMPILE=arm-linux-gnueabihf-
 config=g2-custom_defconfig
 
 if [ ! -f out/zImage ]
