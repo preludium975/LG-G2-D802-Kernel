@@ -5,7 +5,7 @@ export PATH=${PATH}:~/toolchain/linaro-4.8/bin
 export CROSS_COMPILE=arm-linux-gnueabihf-
 ramdisk=ramdisk
 
-select CHOICE in d800 d801 d802 d803
+select CHOICE in d800 d801 d802 d803 ls980 vs980
 do
 case "$CHOICE" in
     "d800")
@@ -19,6 +19,12 @@ case "$CHOICE" in
          break;;
     "d803")
          config=d803-custom_defconfig
+         break;;
+    "ls980")
+         config=ls980-custom_defconfig
+         break;;
+    "vs980")
+         config=vs980-custom_defconfig
          break;;
   esac
 done
