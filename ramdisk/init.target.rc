@@ -214,11 +214,6 @@ service security-check2 /sbin/security_boot_check recovery
     class core
     oneshot
 
-
-on property:sys.boot_completed=1
-   start thermal-engine
-# LGE_CHANGE_E, [G2_power][youngmin.kwon@lge.com], 20130319, thermal-engine start when boot is completed.
-
 service time_daemon /system/bin/time_daemon
    class late_start
    user root
