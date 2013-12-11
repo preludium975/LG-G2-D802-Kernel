@@ -1061,13 +1061,13 @@ static int vgacon_blank(struct vc_data *c, int blank, int mode_switch)
 
 static int vgacon_do_font_op(struct vgastate *state,char *arg,int set,int ch512)
 {
-	unsigned short video_port_status = vga_video_port_reg + 6;
-	int font_select = 0x00, beg, i;
-	char *charmap;
-	
-	if (vga_video_type != VIDEO_TYPE_EGAM) {
-		charmap = (char *) VGA_MAP_MEM(colourmap, 0);
-		beg = 0x0e;
+        unsigned short video_port_status = vga_video_port_reg + 6;
+        int font_select = 0x00, beg, i;
+        char *charmap;
+        bool clear_attribs = false;
+        if (vga_video_type != VIDEO_TYPE_EGAM) {
+                charmap = (char *) VGA_MAP_MEM(colourmap, 0);
+                beg = 0x0e;
 #ifdef VGA_CAN_DO_64KB
 		if (vga_video_type == VIDEO_TYPE_VGAC)
 			beg = 0x06;
@@ -1169,12 +1169,6 @@ static int vgacon_do_font_op(struct vgastate *state,char *arg,int set,int ch512)
 
 	/* if 512 char mode is already enabled don't re-enable it. */
 	if ((set) && (ch512 != vga_512_chars)) {
-		/* attribute controller */
-		for (i = 0; i < MAX_NR_CONSOLES; i++) {
-			struct vc_data *c = vc_cons[i].d;
-			if (c && c->vc_sw == &vga_con)
-				c->vc_hi_font_mask = ch512 ? 0x0800 : 0;
-		}
 		vga_512_chars = ch512;
 		/* 256-char: enable intensity bit
 		   512-char: disable intensity bit */
@@ -1184,9 +1178,23 @@ static int vgacon_do_font_op(struct vgastate *state,char *arg,int set,int ch512)
 		/* Wilton (1987) mentions the following; I don't know what
 		   it means, but it works, and it appears necessary */
 		inb_p(video_port_status);
-		vga_wattr(state->vgabase, VGA_AR_ENABLE_DISPLAY, 0);	
+		vga_wattr(state->vgabase, VGA_AR_ENABLE_DISPLAY, 0);
+                clear_attribs = true;
 	}
 	raw_spin_unlock_irq(&vga_lock);
+
+	if (clear_attribs) {
+		for (i = 0; i < MAX_NR_CONSOLES; i++) {
+			struct vc_data *c = vc_cons[i].d;
+			if (c && c->vc_sw == &vga_con) {
+				/* force hi font mask to 0, so we always clear
+				   the bit on either transition */
+				c->vc_hi_font_mask = 0x00;
+				clear_buffer_attributes(c);
+				c->vc_hi_font_mask = ch512 ? 0x0800 : 0;
+			}
+		}
+	}
 	return 0;
 }
 
