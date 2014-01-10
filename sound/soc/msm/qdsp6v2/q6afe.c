@@ -184,10 +184,10 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		} else if (data->opcode ==
 				AFE_SERVICE_CMDRSP_SHARED_MEM_MAP_REGIONS) {
 			pr_debug("%s: mmap_handle: 0x%x, cal index %d\n",
-	                __func__, payload[0],
-	                atomic_read(&this_afe.mem_map_cal_index));
+				 __func__, payload[0],
+				 atomic_read(&this_afe.mem_map_cal_index));
 	        if (atomic_read(&this_afe.mem_map_cal_index) != -1) {
-			atomic_set(&this_afe.mem_map_cal_handles[
+				atomic_set(&this_afe.mem_map_cal_handles[
 					atomic_read(&this_afe.mem_map_cal_index)],
 					(uint32_t)payload[0]);
 			} else{
@@ -268,6 +268,7 @@ int afe_get_port_type(u16 port_id)
 	case INT_BT_A2DP_RX:
 	case INT_FM_RX:
 	case VOICE_PLAYBACK_TX:
+	case VOICE2_PLAYBACK_TX:
 	case RT_PROXY_PORT_001_RX:
 	case AUDIO_PORT_ID_I2S_RX:
 	case AFE_PORT_ID_PRIMARY_MI2S_RX:
@@ -337,6 +338,7 @@ int afe_sizeof_cfg_cmd(u16 port_id)
 		ret_size = SIZEOF_CFG_CMD(afe_param_id_slimbus_cfg);
 		break;
 	case VOICE_PLAYBACK_TX:
+	case VOICE2_PLAYBACK_TX:
 	case VOICE_RECORD_RX:
 	case VOICE_RECORD_TX:
 		ret_size = SIZEOF_CFG_CMD(afe_param_id_pseudo_port_cfg);
@@ -1301,6 +1303,7 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		cfg_type = AFE_PARAM_ID_HDMI_CONFIG;
 		break;
 	case VOICE_PLAYBACK_TX:
+	case VOICE2_PLAYBACK_TX:
 	case VOICE_RECORD_RX:
 	case VOICE_RECORD_TX:
 		cfg_type = AFE_PARAM_ID_PSEUDO_PORT_CONFIG;
@@ -1349,7 +1352,7 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	ret = afe_apr_send_pkt(&config, &this_afe.wait[index]);
 	if (ret) {
 		pr_err("%s: AFE enable for port %#x failed\n", __func__,
-				port_id);		
+				port_id);
 #ifdef CONFIG_MACH_MSM8974_VU3_KR
 		panic("AFE enable for port failed by vu3 audio team");
 #endif
@@ -1398,6 +1401,7 @@ int afe_get_port_index(u16 port_id)
 	case VOICE_RECORD_RX: return IDX_VOICE_RECORD_RX;
 	case VOICE_RECORD_TX: return IDX_VOICE_RECORD_TX;
 	case VOICE_PLAYBACK_TX: return IDX_VOICE_PLAYBACK_TX;
+	case VOICE2_PLAYBACK_TX: return IDX_VOICE2_PLAYBACK_TX;
 	case SLIMBUS_0_RX: return IDX_SLIMBUS_0_RX;
 	case SLIMBUS_0_TX: return IDX_SLIMBUS_0_TX;
 	case SLIMBUS_1_RX: return IDX_SLIMBUS_1_RX;
@@ -2708,6 +2712,7 @@ int afe_validate_port(u16 port_id)
 	case VOICE_RECORD_RX:
 	case VOICE_RECORD_TX:
 	case VOICE_PLAYBACK_TX:
+	case VOICE2_PLAYBACK_TX:
 	case SLIMBUS_0_RX:
 	case SLIMBUS_0_TX:
 	case SLIMBUS_1_RX:

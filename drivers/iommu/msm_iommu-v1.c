@@ -137,7 +137,6 @@ struct iommu_access_ops iommu_access_ops_v1 = {
 	.iommu_lock_acquire = _iommu_lock_acquire,
 	.iommu_lock_release = _iommu_lock_release,
 };
-EXPORT_SYMBOL(iommu_access_ops_v1);
 
 void iommu_halt(const struct msm_iommu_drvdata *iommu_drvdata)
 {
@@ -652,7 +651,6 @@ static int msm_iommu_map(struct iommu_domain *domain, unsigned long va,
 	if (ret)
 		goto fail;
 
-	ret = __flush_iotlb_va(domain, va);
 fail:
 	mutex_unlock(&msm_iommu_lock);
 	return ret;
@@ -702,7 +700,6 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 	if (ret)
 		goto fail;
 
-	__flush_iotlb(domain);
 fail:
 	mutex_unlock(&msm_iommu_lock);
 	return ret;
@@ -730,7 +727,7 @@ static phys_addr_t msm_iommu_iova_to_phys(struct iommu_domain *domain,
 	struct msm_iommu_priv *priv;
 	struct msm_iommu_drvdata *iommu_drvdata;
 	struct msm_iommu_ctx_drvdata *ctx_drvdata;
-	unsigned int par;
+	u64 par;
 	void __iomem *base;
 	phys_addr_t ret = 0;
 	int ctx;
@@ -763,6 +760,23 @@ static phys_addr_t msm_iommu_iova_to_phys(struct iommu_domain *domain,
 	__disable_clocks(iommu_drvdata);
 
 	if (par & CB_PAR_F) {
+		unsigned int level = (par & CB_PAR_PLVL) >> CB_PAR_PLVL_SHIFT;
+		pr_err("IOMMU translation fault!\n");
+		pr_err("name = %s\n", iommu_drvdata->name);
+		pr_err("context = %s (%d)\n", ctx_drvdata->name,
+						ctx_drvdata->num);
+		pr_err("Interesting registers:\n");
+		pr_err("PAR = %16llx [%s%s%s%s%s%s%s%sPLVL%u %s]\n", par,
+			(par & CB_PAR_F) ? "F " : "",
+			(par & CB_PAR_TF) ? "TF " : "",
+			(par & CB_PAR_AFF) ? "AFF " : "",
+			(par & CB_PAR_PF) ? "PF " : "",
+			(par & CB_PAR_EF) ? "EF " : "",
+			(par & CB_PAR_TLBMCF) ? "TLBMCF " : "",
+			(par & CB_PAR_TLBLKF) ? "TLBLKF " : "",
+			(par & CB_PAR_ATOT) ? "ATOT " : "",
+			level,
+			(par & CB_PAR_STAGE) ? "S2 " : "S1 ");
 		ret = 0;
 	} else {
 		/* We are dealing with a supersection */
@@ -884,7 +898,8 @@ irqreturn_t msm_iommu_fault_handler_v2(int irq, void *dev_id)
 			__print_ctx_regs(drvdata->base, ctx_drvdata->num, fsr);
 		}
 
-		SET_FSR(drvdata->base, ctx_drvdata->num, fsr);
+		if (ret != -EBUSY)
+			SET_FSR(drvdata->base, ctx_drvdata->num, fsr);
 		ret = IRQ_HANDLED;
 	} else
 		ret = IRQ_NONE;

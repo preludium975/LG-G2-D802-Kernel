@@ -17,7 +17,6 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 
-#include "mdss_fb.h"
 #include "mdss_mdp.h"
 #ifdef CONFIG_OLED_SUPPORT  // for 4th panel
 #include "mdss_dsi.h"
@@ -28,6 +27,7 @@
 #include <mach/board_lge.h>
 /* LGE_UPDATE_E for MINIOS2.0 */
 #endif
+#include "mdss_panel.h"
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
@@ -430,11 +430,9 @@ static int mdss_mdp_video_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 	if (ctx->polling_en) {
 		rc = mdss_mdp_video_pollwait(ctl);
 	} else {
-		rc = wait_for_completion_interruptible_timeout(&ctx->vsync_comp,
+		rc = wait_for_completion_timeout(&ctx->vsync_comp,
 				usecs_to_jiffies(VSYNC_TIMEOUT_US));
-		if (rc < 0) {
-			pr_warn("vsync wait interrupted ctl=%d\n", ctl->num);
-		} else if (rc == 0) {
+		if (rc == 0) {
 			pr_warn("vsync wait timeout %d, fallback to poll mode\n",
 					ctl->num);
 			ctx->polling_en++;
@@ -442,6 +440,9 @@ static int mdss_mdp_video_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 		} else {
 			rc = 0;
 		}
+
+		mdss_mdp_ctl_notify(ctl,
+			rc ? MDP_NOTIFY_FRAME_TIMEOUT : MDP_NOTIFY_FRAME_DONE);
 	}
 
 	if (ctx->wait_pending) {
@@ -512,9 +513,9 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 		mdp_video_write(ctx, MDSS_MDP_REG_INTF_TIMING_ENGINE_EN, 1);
 		wmb();
 
-		rc = wait_for_completion_interruptible_timeout(&ctx->vsync_comp,
+		rc = wait_for_completion_timeout(&ctx->vsync_comp,
 				usecs_to_jiffies(VSYNC_TIMEOUT_US));
-		WARN(rc <= 0, "timeout (%d) enabling timegen on ctl=%d\n",
+		WARN(rc == 0, "timeout (%d) enabling timegen on ctl=%d\n",
 				rc, ctl->num);
 
 		ctx->timegen_en = true;

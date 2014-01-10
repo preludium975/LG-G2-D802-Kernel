@@ -79,6 +79,12 @@
 #define MSM_MMC_BUS_VOTING_DELAY	200 /* msecs */
 #define INVALID_TUNING_PHASE		-1
 
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+extern int sdc2_status_register(
+		void (*cb)(int card_present, void *dev), void *dev);
+extern unsigned int sdc2_status(struct device *dev);
+#endif
+
 #if defined(CONFIG_DEBUG_FS)
 static void msmsdcc_dbg_createhost(struct msmsdcc_host *);
 static struct dentry *debugfs_dir;
@@ -523,7 +529,8 @@ msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 	if (mrq->data)
 		mrq->data->bytes_xfered = host->curr.data_xfered;
 	if (mrq->cmd->error == -ETIMEDOUT)
-		mdelay(5);
+		DBG(host, "op %02x arg %08x flags %08x: TIMEOUT\n",
+			mrq->cmd->opcode, mrq->cmd->arg, mrq->cmd->flags);
 
 	msmsdcc_reset_dpsm(host);
 
@@ -1662,6 +1669,13 @@ static void msmsdcc_sg_stop(struct msmsdcc_host *host)
 	sg_miter_stop(&host->pio.sg_miter);
 }
 
+static inline void msmsdcc_clear_pio_irq_mask(struct msmsdcc_host *host)
+{
+	writel_relaxed(readl_relaxed(host->base + MMCIMASK0) & ~MCI_IRQ_PIO,
+			host->base + MMCIMASK0);
+	mb();
+}
+
 static irqreturn_t
 msmsdcc_pio_irq(int irq, void *dev_id)
 {
@@ -1674,7 +1688,7 @@ msmsdcc_pio_irq(int irq, void *dev_id)
 
 	spin_lock(&host->lock);
 
-	if (!atomic_read(&host->clks_on)) {
+	if (!atomic_read(&host->clks_on) || !host->curr.data) {
 		spin_unlock(&host->lock);
 		return IRQ_NONE;
 	}
@@ -1737,25 +1751,19 @@ msmsdcc_pio_irq(int irq, void *dev_id)
 	msmsdcc_sg_stop(host);
 	local_irq_restore(flags);
 
+	if (!host->curr.xfer_remain) {
+		msmsdcc_clear_pio_irq_mask(host);
+		goto out_unlock;
+	}
+
 	if (status & MCI_RXACTIVE && host->curr.xfer_remain < MCI_FIFOSIZE) {
 		writel_relaxed((readl_relaxed(host->base + MMCIMASK0) &
-				(~(MCI_IRQ_PIO))) | MCI_RXDATAAVLBLMASK,
-				host->base + MMCIMASK0);
-		if (!host->curr.xfer_remain) {
-			/*
-			 * back to back write to MASK0 register don't need
-			 * synchronization delay.
-			 */
-			writel_relaxed((readl_relaxed(host->base + MMCIMASK0) &
-				(~(MCI_IRQ_PIO))) | 0, host->base + MMCIMASK0);
-		}
-		mb();
-	} else if (!host->curr.xfer_remain) {
-		writel_relaxed((readl_relaxed(host->base + MMCIMASK0) &
-				(~(MCI_IRQ_PIO))) | 0, host->base + MMCIMASK0);
+					~MCI_IRQ_PIO) | MCI_RXDATAAVLBLMASK,
+					host->base + MMCIMASK0);
 		mb();
 	}
 
+out_unlock:
 	spin_unlock(&host->lock);
 
 	return IRQ_HANDLED;
@@ -1849,6 +1857,7 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 			msmsdcc_sps_exit_curr_xfer(host);
 		}
 		else if (host->curr.data) { /* Non DMA */
+			msmsdcc_clear_pio_irq_mask(host);
 			msmsdcc_reset_and_restore(host);
 			msmsdcc_stop_data(host);
 			msmsdcc_request_end(host, cmd->mrq);
@@ -2020,6 +2029,7 @@ msmsdcc_irq(int irq, void *dev_id)
 					/* Stop current SPS transfer */
 					msmsdcc_sps_exit_curr_xfer(host);
 				} else {
+					msmsdcc_clear_pio_irq_mask(host);
 					msmsdcc_reset_and_restore(host);
 					if (host->curr.data)
 						msmsdcc_stop_data(host);
@@ -5414,7 +5424,7 @@ static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
 	mrq = host->curr.mrq;
 
 	if (mrq && mrq->cmd) {
-		if (!mrq->cmd->bkops_busy) {
+		if (!mrq->cmd->ignore_timeout) {
 			pr_info("%s: CMD%d: Request timeout\n",
 				mmc_hostname(host->mmc), mrq->cmd->opcode);
 			msmsdcc_dump_sdcc_state(host);
@@ -5433,6 +5443,7 @@ static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
 				/* Stop current SPS transfer */
 				msmsdcc_sps_exit_curr_xfer(host);
 			} else {
+				msmsdcc_clear_pio_irq_mask(host);
 				msmsdcc_reset_and_restore(host);
 				msmsdcc_stop_data(host);
 				if (mrq->data && mrq->data->stop)
@@ -5943,6 +5954,8 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 		pdata->nonremovable = true;
 	if (of_get_property(np, "qcom,disable-cmd23", NULL))
 		pdata->disable_cmd23 = true;
+	if (of_get_property(np, "qcom,wifi-control-func", NULL))
+		pdata->wifi_control_func = true;
 	of_property_read_u32(np, "qcom,dat1-mpm-int",
 					&pdata->mpm_sdiowakeup_int);
 
@@ -5951,12 +5964,6 @@ err:
 	return NULL;
 }
 
-/* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
-#if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE) //joon For device tree.
-extern int sdc2_status_register(void (*cb)(int card_present, void *dev), void *dev);
-extern unsigned int sdc2_status(struct device* );
-#endif
-/* LGE_CHANGE_E, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
 static int
 msmsdcc_probe(struct platform_device *pdev)
 {
@@ -6334,28 +6341,15 @@ msmsdcc_probe(struct platform_device *pdev)
 	 * Setup card detect change
 	 */
 
-/* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
-#if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE) //joon For device tree.
-{
-	extern int lge_get_board_revno(void);
-	int bcmdhd_id = 2; // sdcc 2
-	#if defined(CONFIG_MACH_MSM8974_G2_KR) 
-	if (3 /*HW_REV_B*/ < lge_get_board_revno()) {
-		bcmdhd_id = 3; //sdcc 3
-	}
-	#elif defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_MACH_MSM8974_G2_KDDI)
-		bcmdhd_id = 3; //sdcc 3
-	#endif	
-	printk("J:%s-%d> plat->nonremovable = %d\n", __FUNCTION__, host->pdev->id, plat->nonremovable );
-
-	if( host->pdev->id == bcmdhd_id )
-	{
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+	pr_info("%s: id %d, nonremovable %d\n", mmc_hostname(mmc),
+			host->pdev->id, plat->nonremovable);
+	if (plat->wifi_control_func) {
 		plat->register_status_notify = sdc2_status_register;
 		plat->status = sdc2_status;
+		mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
-}
 #endif
-/* LGE_CHANGE_E, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
 
 	if (!plat->status_gpio)
 		plat->status_gpio = -ENOENT;

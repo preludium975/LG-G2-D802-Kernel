@@ -79,7 +79,7 @@
 #include <asm/smp.h>
 #endif
 
-#include <mach/board_lge.h>	/*                          */
+#include <mach/board_lge.h>	/* LGE_UPDATE for MINIOS2.0 */
 
 static int kernel_init(void *);
 
@@ -134,7 +134,7 @@ static char *static_command_line;
 
 static char *execute_command;
 static char *ramdisk_execute_command;
-static char miniOS_command[] = "miniOS";	/*                          */
+static char miniOS_command[] = "miniOS";	/* LGE_UPDATE for MINIOS2.0 */
 /*
  * If set, this is an indication to the drivers that reset the underlying
  * device before going ahead with the initialization otherwise driver might
@@ -868,13 +868,13 @@ static void run_init_process(const char *init_filename)
 {
 	argv_init[0] = init_filename;
 
-	/*                            */
+	/* LGE_UPDATE_S for MINIOS2.0 */
 	if(lge_get_boot_mode() == LGE_BOOT_MODE_MINIOS)
 	{
 		printk(KERN_WARNING "BOOT MODE %s\n", miniOS_command);
 		argv_init[1] = miniOS_command;
 	}
-	/*                            */
+	/* LGE_UPDATE_E for MINIOS2.0 */
 
 	kernel_execve(init_filename, argv_init, envp_init);
 }

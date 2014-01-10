@@ -1160,6 +1160,10 @@ static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
 			pr_warn("ad_setup(dspp%d) returns %d", dspp_num, ret);
 #endif
 	}
+	/* call calibration specific processing here */
+	if (ctl->mfd->calib_mode)
+		goto flush_exit;
+
 	/* nothing to update */
 	if ((!flags) && (!(opmode)) && (ret <= 0))
 		goto dspp_exit;
@@ -1250,6 +1254,7 @@ static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
 	if (pp_sts->pgc_sts & PP_STS_ENABLE)
 		opmode |= (1 << 22);
 
+flush_exit:
 	writel_relaxed(opmode, basel + MDSS_MDP_REG_DSPP_OP_MODE);
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, BIT(13 + dspp_num));
 	wmb();
@@ -3542,6 +3547,9 @@ static void pp_ad_calc_worker(struct work_struct *work)
 	mutex_lock(&mfd->lock);
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, BIT(13 + ad->num));
 	mutex_unlock(&mfd->lock);
+
+	/* Trigger update notify to wake up those waiting for display updates */
+	mdss_fb_update_notify_update(mfd);
 }
 
 #define PP_AD_LUT_LEN 33
@@ -3581,6 +3589,7 @@ int mdss_mdp_ad_addr_setup(struct mdss_data_type *mdata, u32 *ad_off)
 		mdata->ad_cfgs[i].last_str = 0xFFFFFFFF;
 		mutex_init(&mdata->ad_cfgs[i].lock);
 		mdata->ad_cfgs[i].handle.vsync_handler = pp_ad_vsync_handler;
+		mdata->ad_cfgs[i].handle.cmd_post_flush = true;
 		INIT_WORK(&mdata->ad_cfgs[i].calc_work, pp_ad_calc_worker);
 	}
 	return rc;
@@ -3644,9 +3653,6 @@ end:
 	return ret;
 }
 
-
-
-
 int mdss_mdp_calib_config(struct mdp_calib_config_data *cfg, u32 *copyback)
 {
 	int ret = -1;
@@ -3668,5 +3674,82 @@ int mdss_mdp_calib_config(struct mdp_calib_config_data *cfg, u32 *copyback)
 		ret = 0;
 	}
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+	return ret;
+}
+
+int mdss_mdp_calib_mode(struct msm_fb_data_type *mfd,
+				struct mdss_calib_cfg *cfg)
+{
+	if (!mdss_pp_res || !mfd)
+		return -EINVAL;
+	mutex_lock(&mdss_pp_mutex);
+	mfd->calib_mode = cfg->calib_mask;
+	mutex_unlock(&mdss_pp_mutex);
+	return 0;
+}
+
+int mdss_mdp_calib_config_buffer(struct mdp_calib_config_buffer *cfg,
+						u32 *copyback)
+{
+	int ret = -1;
+	int counter = cfg->size / (sizeof(uint32_t) * 2);
+	uint32_t *buff = NULL, *buff_org = NULL;
+	void *ptr;
+	int i = 0;
+
+	buff_org = buff = kzalloc(cfg->size, GFP_KERNEL);
+	if (buff == NULL) {
+		pr_err("Allocation failed");
+		return ret;
+	}
+
+	if (copy_from_user(buff, cfg->buffer, cfg->size)) {
+		kfree(buff);
+		pr_err("Copy failed");
+		return ret;
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
+	if (cfg->ops & MDP_PP_OPS_READ) {
+		for (i = 0 ; i < counter ; i++) {
+			if (is_valid_calib_addr((void *) *buff)) {
+				ret = 0;
+			} else {
+				ret = -1;
+				pr_err("Address validation failed");
+				break;
+			}
+
+			ptr = (void *)(((unsigned int) *buff) +
+					 (mdss_res->mdp_base));
+			buff++;
+			*buff = readl_relaxed(ptr);
+			buff++;
+		}
+		if (!ret)
+			ret = copy_to_user(cfg->buffer, buff_org, cfg->size);
+		*copyback = 1;
+	} else if (cfg->ops & MDP_PP_OPS_WRITE) {
+		for (i = 0 ; i < counter ; i++) {
+			if (is_valid_calib_addr((void *) *buff)) {
+				ret = 0;
+			} else {
+				ret = -1;
+				pr_err("Address validation failed");
+				break;
+			}
+
+			ptr = (void *)(((unsigned int) *buff) +
+					 (mdss_res->mdp_base));
+			buff++;
+			writel_relaxed(*buff, ptr);
+			buff++;
+		}
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+
+	kfree(buff_org);
 	return ret;
 }

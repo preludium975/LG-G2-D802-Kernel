@@ -954,6 +954,12 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 			return;
 		}
 
+		/* wait if iommu isn't attached */
+		if (!is_mdss_iommu_attached()) {
+			DEV_INFO("%s: mdp iommu is not attached yet.\n", __func__);
+			wait_for_completion_interruptible(&mdss_res->iommu_attach_done);
+		}
+
 		hdmi_tx_read_sink_info(hdmi_ctrl);
 		hdmi_tx_send_cable_notification(hdmi_ctrl, 1);
 		DEV_INFO("%s: sense cable CONNECTED: state switch to %d\n",
@@ -3413,13 +3419,13 @@ static int hdmi_tx_get_dt_vreg_data(struct device *dev,
 				__func__, hdmi_tx_pm_name(module_type), rc);
 			goto error;
 		}
-		mp->vreg_config[j].peak_current = val_array[i];
+		mp->vreg_config[j].enable_load = val_array[i];
 
 		DEV_DBG("%s: %s min=%d, max=%d, pc=%d\n", __func__,
 			mp->vreg_config[j].vreg_name,
 			mp->vreg_config[j].min_voltage,
 			mp->vreg_config[j].max_voltage,
-			mp->vreg_config[j].peak_current);
+			mp->vreg_config[j].enable_load);
 
 		ndx_mask >>= 1;
 		j++;

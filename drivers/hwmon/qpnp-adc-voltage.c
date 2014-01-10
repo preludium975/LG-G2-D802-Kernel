@@ -268,7 +268,7 @@ static int32_t qpnp_vadc_enable(bool state)
 	return 0;
 }
 
-//                                                                 
+//[START] yeonhwa.so@lge.com ADD V-adc reg. dump function for debug
 #ifdef CONFIG_MACH_LGE
 //Reg. address list which is possible to be read , related to PM8941 VADC1_USR_VADC
 static int adc_reg[]={	0x04,0x05,0x08,0x09,0x10,0x11,0x12
@@ -295,7 +295,7 @@ static int32_t qpnp_vadc_full_reg_print(void){
 }
 
 #endif
-//                        
+//[END] yeonhwa.so@lge.com
 
 static int32_t qpnp_vadc_status_debug(void)
 {
@@ -1194,7 +1194,7 @@ void xo_therm_logging(void)
 	if (rc)
 		pr_err("VADC read error with %d\n", rc);
 
-	printk(KERN_INFO "[XO_THERM] Result:%lld Raw:%d\n", tmp.physical, tmp.adc_code);
+	//printk(KERN_INFO "[XO_THERM] Result:%lld Raw:%d\n", tmp.physical, tmp.adc_code);
 }
 #endif
 

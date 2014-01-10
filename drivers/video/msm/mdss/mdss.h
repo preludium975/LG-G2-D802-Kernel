@@ -73,6 +73,7 @@ struct mdss_data_type {
 	u32 irq_buzy;
 	u32 has_bwc;
 	u32 has_decimation;
+	u8 has_wfd_blk;
 
 	u32 mdp_irq_mask;
 	u32 mdp_hist_irq_mask;
@@ -88,6 +89,7 @@ struct mdss_data_type {
 
 	u32 smp_mb_cnt;
 	u32 smp_mb_size;
+	u32 smp_mb_per_pipe;
 
 	u32 rot_block_size;
 
@@ -120,6 +122,9 @@ struct mdss_data_type {
 
 	struct early_suspend early_suspend;
 	void *debug_data;
+	struct completion iommu_attach_done;
+	int current_bus_idx;
+	bool mixer_switched;
 };
 extern struct mdss_data_type *mdss_res;
 
@@ -142,6 +147,7 @@ int mdss_register_irq(struct mdss_hw *hw);
 void mdss_enable_irq(struct mdss_hw *hw);
 void mdss_disable_irq(struct mdss_hw *hw);
 void mdss_disable_irq_nosync(struct mdss_hw *hw);
+void mdss_bus_bandwidth_ctrl(int enable);
 
 static inline struct ion_client *mdss_get_ionclient(void)
 {

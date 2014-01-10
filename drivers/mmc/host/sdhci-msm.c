@@ -98,6 +98,9 @@
 #define CORE_TESTBUS_ENA	(1 << 3)
 #define CORE_TESTBUS_SEL2	(1 << 4)
 
+#define CORE_MCI_VERSION	0x050
+#define CORE_VERSION_310	0x10000011
+
 /*
  * Waiting until end of potential AHB access for data:
  * 16 AHB cycles (160ns for 100MHz and 320ns for 50MHz) +
@@ -2035,6 +2038,7 @@ static void sdhci_msm_set_clock(struct sdhci_host *host, unsigned int clock)
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
 	struct mmc_ios	curr_ios = host->mmc->ios;
 	u32 sup_clock, ddr_clock;
+	bool curr_pwrsave;
 
 	if (!clock) {
 		sdhci_msm_prepare_clocks(host, false);
@@ -2045,6 +2049,22 @@ static void sdhci_msm_set_clock(struct sdhci_host *host, unsigned int clock)
 	rc = sdhci_msm_prepare_clocks(host, true);
 	if (rc)
 		return;
+
+	curr_pwrsave = !!(readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC) &
+			  CORE_CLK_PWRSAVE);
+	if ((clock > 400000) &&
+	    !curr_pwrsave && mmc_host_may_gate_card(host->mmc->card))
+		writel_relaxed(readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC)
+				| CORE_CLK_PWRSAVE,
+				host->ioaddr + CORE_VENDOR_SPEC);
+	/*
+	 * Disable pwrsave for a newly added card if doesn't allow clock
+	 * gating.
+	 */
+	else if (curr_pwrsave && !mmc_host_may_gate_card(host->mmc->card))
+		writel_relaxed(readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC)
+				& ~CORE_CLK_PWRSAVE,
+				host->ioaddr + CORE_VENDOR_SPEC);
 
 	sup_clock = sdhci_msm_get_sup_clk_rate(host, clock);
 	if (curr_ios.timing == MMC_TIMING_UHS_DDR50) {
@@ -2133,6 +2153,12 @@ static void sdhci_msm_disable_data_xfer(struct sdhci_host *host)
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
 	u32 value;
 	int ret;
+	u32 version;
+
+	version = readl_relaxed(msm_host->core_mem + CORE_MCI_VERSION);
+	/* Core version 3.1.0 doesn't need this workaround */
+	if (version == CORE_VERSION_310)
+		return;
 
 	value = readl_relaxed(msm_host->core_mem + CORE_MCI_DATA_CTRL);
 	value &= ~(u32)CORE_MCI_DPSM_ENABLE;
@@ -2170,6 +2196,23 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.get_max_clock = sdhci_msm_get_max_clock,
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 };
+
+#ifdef CONFIG_MMC_SDHCI_MSM_DISABLE_HPI
+static void populate_hpi_mode(struct platform_device *pdev,
+					struct sdhci_msm_host *msm_host)
+{
+	dev_dbg(&pdev->dev,"%s: Disabling HPI mode\n", __func__);
+	return;
+}
+#else
+static void populate_hpi_mode(struct platform_device *pdev,
+					struct sdhci_msm_host *msm_host)
+{
+	msm_host->mmc->caps2 |= MMC_CAP2_STOP_REQUEST;
+	dev_dbg(&pdev->dev,"%s: Enabling HPI mode\n", __func__);
+	return;
+}
+#endif
 
 static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 {
@@ -2433,7 +2476,7 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 	#endif
 	msm_host->mmc->caps2 |= MMC_CAP2_POWEROFF_NOTIFY;
 	msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
-	msm_host->mmc->caps2 |= MMC_CAP2_STOP_REQUEST;
+	populate_hpi_mode(pdev, msm_host);
 
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;

@@ -113,6 +113,7 @@
 				1 &intc 0 220 0
 				2 &msmgpio 74 0x3>;
 		interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
+		qcom,wifi-control-func;
 
 		vdd-supply = <&pm8941_l21>;
 		vdd-io-supply = <&pm8941_l13>;
@@ -132,7 +133,7 @@
 		qcom,sup-voltages = <2950 2950>;
 		qcom,bus-width = <4>;
 		qcom,xpc;
-		/*qcom,nonremovable;*/
+		qcom,nonremovable;
 		qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "SDR104";
 		qcom,current-limit = <800>;
 
@@ -170,6 +171,7 @@
 				1 &intc 0 220 0
 				2 &msmgpio 44 0x3>;
 		interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
+		qcom,wifi-control-func;
 
 		vdd-supply = <&pm8941_l21>;
 		vdd-io-supply = <&pm8941_l13>;
@@ -189,7 +191,7 @@
 		qcom,sup-voltages = <2950 2950>;
 		qcom,bus-width = <4>;
 		qcom,xpc;
-		/*qcom,nonremovable;*/
+		qcom,nonremovable;
 		qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "SDR104";
 		qcom,current-limit = <800>;
 
@@ -227,6 +229,7 @@
 				1 &intc 0 220 0
 				2 &msmgpio 44 0x3>;
 		interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
+		qcom,wifi-control-func;
 
 		vdd-supply = <&pm8941_l21>;
 		vdd-io-supply = <&pm8941_s3>;
@@ -246,7 +249,7 @@
 		qcom,sup-voltages = <2950 2950>;
 		qcom,bus-width = <4>;
 		qcom,xpc;
-		/*qcom,nonremovable;*/
+		qcom,nonremovable;
 		qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "SDR104";
 		qcom,current-limit = <800>;
 

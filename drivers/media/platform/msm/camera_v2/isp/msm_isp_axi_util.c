@@ -958,11 +958,11 @@ static int msm_isp_start_axi_stream(struct vfe_device *vfe_dev,
 
 	msm_isp_update_camif_output_count(vfe_dev, stream_cfg_cmd);
 	if (camif_update == ENABLE_CAMIF)
-/*                                                                                   */
+/* LGE_CHANGE_S, add the dual isp patch code from QCT, 2013.6.20, youngil.yun[Start] */
 #ifdef CONFIG_USE_DUAL_ISP
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id = 0;		
 #endif
-/*                                                                                 */
+/* LGE_CHANGE_E, add the dual isp patch code from QCT, 2013.6.20, youngil.yun[End] */
 		vfe_dev->hw_info->vfe_ops.core_ops.
 			update_camif_state(vfe_dev, camif_update);
 

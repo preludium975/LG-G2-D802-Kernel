@@ -36,9 +36,9 @@
 #include <linux/spinlock.h>
 #include <linux/poll.h>
 #include <linux/version.h>
-/*                                                                     */
+/*  LGE_CHANGE_S, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 #include <linux/of_gpio.h>
-/*                                                                     */
+/*  LGE_CHANGE_E, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 
 #include <linux/nfc/bcm2079x.h>
 #include <linux/wakelock.h>
@@ -389,7 +389,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
 	int ret;
-	/*                                                                    */
+	/* LGE_CHANGE_S, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 	//struct bcm2079x_platform_data *platform_data = NULL;
 	//struct bcm2079x_dev *bcm2079x_dev = NULL;
 
@@ -419,7 +419,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 	*/
-	/*                                                                    */
+	/* LGE_CHANGE_E, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 
 	ret = gpio_request_one(platform_data.irq_gpio, GPIOF_IN, "nfc_int");
 	if (ret)
@@ -547,9 +547,9 @@ static void __exit bcm2079x_dev_exit(void)
 }
 module_exit(bcm2079x_dev_exit);
 
-/*                                                                    */
+/* LGE_CHANGE_S, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 MODULE_DEVICE_TABLE(i2c, bcm2079x_id);
-/*                                                                    */
+/* LGE_CHANGE_S, [NFC][wongab.jeon@lge.com], 2013-02-13, NFC Bring up */
 MODULE_AUTHOR("Broadcom");
 MODULE_DESCRIPTION("NFC bcm2079x driver");
 MODULE_LICENSE("GPL");

@@ -910,7 +910,7 @@ static int unmap_cal_tables(void)
 static int deregister_memory(void)
 {
 	int	result = 0;
-	int	i;
+	int i;
 	pr_debug("%s\n", __func__);
 
 	if (atomic64_read(&acdb_data.mem_len)) {
