@@ -168,9 +168,9 @@ void __init lge_add_lcd_misc_devices(void);
 #endif
 
 #if defined(CONFIG_LCD_KCAL)
-/*             
-                          
-                                
+/* LGE_CHANGE_S
+* change code for LCD KCAL
+* 2013-05-08, seojin.lee@lge.com
 */
 void __init lge_add_lcd_kcal_devices(void);
 #endif

@@ -71,7 +71,7 @@ const char *hw_platform[] = {
 };
 
 #ifdef CONFIG_MACH_LGE
-/*                 */
+/* LGE platform id */
 enum {
 	HW_PLATFORM_LGE_START   = 100,
 	HW_PLATFORM_LGPS11      = 100,
@@ -463,11 +463,11 @@ char *socinfo_get_build_id(void)
 	return (socinfo) ? socinfo->v1.build_id : NULL;
 }
 
-/*           
-                                                                  
-                                  
-                                              
-                                  
+/* LGE_CHANGE
+ * implement the userspace interface for reading soc serial number
+ * 2012-01-10 jaeseong.gim@lge.com
+ * modify address of serial number for msm8974
+ * 2013-02-07 duckhwan.lee@lge.com
  */
 #ifdef CONFIG_ARCH_MSM8974
 #include <linux/io.h>
@@ -599,13 +599,13 @@ socinfo_show_build_id(struct sys_device *dev,
 	return snprintf(buf, PAGE_SIZE, "%-.32s\n", socinfo_get_build_id());
 }
 
-/*           
-                                                                  
-                                  
-                                              
-                                  
-                                 
-                              
+/* LGE_CHANGE
+ * implement the userspace interface for reading soc serial number
+ * 2012-01-10 jaeseong.gim@lge.com
+ * modify address of serial number for msm8974
+ * 2013-02-07 duckhwan.lee@lge.com
+ * added speed_bin & pvs_bin info
+ * 2013-06-07 fred.cho@lge.com
  */
 #ifdef CONFIG_ARCH_MSM8974
 #ifdef CONFIG_MACH_LGE
@@ -916,11 +916,11 @@ static struct sysdev_attribute socinfo_v1_files[] = {
 	_SYSDEV_ATTR(speed_bin, 0444, socinfo_show_speed_bin, NULL),
 	_SYSDEV_ATTR(pvs_bin, 0444, socinfo_show_pvs_bin, NULL),
 #endif
-/*           
-                                                                  
-                                  
-                                              
-                                  
+/* LGE_CHANGE
+ * implement the userspace interface for reading soc serial number
+ * 2012-01-10 jaeseong.gim@lge.com
+ * modify address of serial number for msm8974
+ * 2013-02-07 duckhwan.lee@lge.com
  */
 #ifdef CONFIG_ARCH_MSM8974
 	_SYSDEV_ATTR(serial_number, 0444, socinfo_show_serial_number, NULL),
