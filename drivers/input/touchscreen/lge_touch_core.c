@@ -62,7 +62,6 @@ extern char f54_wlog_buf[6000];
 int f54_window_crack_check_mode = 0;
 int f54_window_crack = 0;
 static int ts_suspend = 0;
-static bool blank_status = false;
 #endif
 
 #if defined(Z_GLOVE_TOUCH_SUPPORT)
@@ -85,11 +84,7 @@ struct lge_touch_attribute lge_touch_attr_##_name = __ATTR(_name, _mode, _show, 
 /* Debug mask value
  * usage: echo [debug_mask] > /sys/module/lge_touch_core/parameters/debug_mask
  */
-#if defined(A1_only)
-u32 touch_debug_mask = DEBUG_BASE_INFO | DEBUG_NOISE;
-#else
 u32 touch_debug_mask = DEBUG_BASE_INFO;
-#endif
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
 #ifdef LGE_TOUCH_TIME_DEBUG
@@ -139,9 +134,6 @@ static int touch_ic_init(struct lge_touch_data *ts);
 static struct hrtimer hr_touch_trigger_timer;
 #define MS_TO_NS(x)	(x * 1E6L)
 
-#ifdef CONFIG_MACH_MSM8974_G2_DCM
-int boo = 0;
-#endif
 static bool touch_enable = 1;
 static void touch_enable_irq(unsigned int irq){
 	if(!touch_enable){
@@ -389,7 +381,7 @@ int ghost_detect_solution(struct lge_touch_data *ts)
 			if (is_long_press) long_press_cnt++;
 			else long_press_cnt = 0;
 
-			if (long_press_cnt > 700) {
+			if (long_press_cnt > 500) {
 				long_press_cnt = 0;
 				TOUCH_INFO_MSG("GHOST_LONG_PRESS\n");
 				goto out_need_to_rebase;
@@ -1200,13 +1192,16 @@ static int touch_ic_init(struct lge_touch_data *ts)
 		TOUCH_ERR_MSG("specific device initialization fail\n");
 		goto err_out_retry;
 	}
-
-	if(touch_device_func->ic_ctrl) {
-		if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_DOUBLE_TAP_WAKEUP_MODE, 0) < 0){
-			TOUCH_ERR_MSG("IC_CTRL_DOUBLE_TAP_WAKEUP_MODE handling fail\n");
-			goto err_out_retry;
+#ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_B){
+		if(touch_device_func->ic_ctrl) {
+			if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_DOUBLE_TAP_WAKEUP_MODE, 0) < 0){
+				TOUCH_ERR_MSG("IC_CTRL_DOUBLE_TAP_WAKEUP_MODE handling fail\n");
+				goto err_out_retry;
+			}
 		}
 	}
+#endif
 
 	/* Interrupt pin check after IC init - avoid Touch lockup */
 	if(ts->pdata->role->operation_mode == INTERRUPT_MODE){
@@ -2007,19 +2002,6 @@ static void touch_work_post_proc(struct lge_touch_data *ts, int post_proc)
 		post_proc = WORK_POST_COMPLATE;
 		break;
 
-#if defined(CONFIG_LGE_VU3_TOUCHSCREEN)
-	case WORK_POST_OUT_IGNORE_INT:
-#ifdef LGE_TOUCH_TIME_DEBUG
-		do_gettimeofday(&t_debug[TIME_WORKQUEUE_END]);
-		if (next_work)
-			memset(t_debug, 0x0, sizeof(t_debug));
-		time_profile_result(ts);
-#endif
-		ts->work_sync_err_cnt = 0;
-		post_proc = WORK_POST_COMPLATE;
-		break;
-#endif
-
 	case WORK_POST_ERR_RETRY:
 		ts->work_sync_err_cnt++;
 		atomic_inc(&ts->next_work);
@@ -2059,10 +2041,7 @@ static void touch_work_func_a(struct work_struct *work)
 		goto err_out_critical;
 	else if (ret == -EAGAIN)
 		goto out;
-#if defined(CONFIG_LGE_VU3_TOUCHSCREEN)
-	else if (ret == -IGNORE_INTERRUPT)
-		goto out_ignore_interrupt;
-#endif
+
 	/* Finger handle */
 	if (ts->ts_data.state != TOUCH_ABS_LOCK) {
 		if (!ts->ts_data.total_num) {
@@ -2192,11 +2171,7 @@ static void touch_work_func_a(struct work_struct *work)
 				input_sync(ts->input_dev);
 		}
 	}
-#if defined(CONFIG_LGE_VU3_TOUCHSCREEN)
-out_ignore_interrupt:
-	touch_work_post_proc(ts, WORK_POST_OUT_IGNORE_INT);
-	return;
-#endif
+
 out:
 	touch_work_post_proc(ts, WORK_POST_OUT);
 	return;
@@ -2502,7 +2477,16 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
     if(lge_get_board_revno() <= HW_REV_B){
         TOUCH_INFO_MSG("HW_REV : %d, Touch FW Update skipped ", lge_get_board_revno());
         goto out;
-    }
+    }else {
+        if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) ==
+            (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
+            && !ts->fw_info.fw_upgrade.fw_force_upgrade){
+            TOUCH_INFO_MSG("As Firmware Versions are equal, FW-upgrade will be not executed\n");
+            goto out;
+        }else {
+            ts->fw_info.fw_force_rework = true;
+        }
+     }
 #endif
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
@@ -2564,106 +2548,107 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 		}
 #else
 #ifdef CONFIG_MACH_MSM8974_G2_OPEN_COM
-if ((!strncmp(ts->fw_info.ic_fw_identifier, "PLG208", 6)) || (!strncmp(ts->fw_info.ic_fw_identifier, "PLG244", 6)) 
-		|| (!strncmp(ts->fw_info.ic_fw_identifier, "PLG270", 6))) {
-	TOUCH_INFO_MSG("ic_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10));
-	TOUCH_INFO_MSG("syna_img_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10));
-
-	if(ts->fw_info.fw_setting.ic_chip_rev == 2) {
-		/* SSUNTEL G1F ic_chip_rev = 2, touch id = 1.8V */
-		TOUCH_INFO_MSG("ic_chip_rev = 2, touch id = 1.8V\n");
-
-		if( (int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >= 16) {
-			TOUCH_INFO_MSG("Touch IC has wrong FW, SSUNTEL G1F FW-upgrade is executed\n");
-		} else if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) > 16) {
-			TOUCH_INFO_MSG("Touch img is not for SSUNTEL G1F, FW-upgrade is not executed!\n");
+		#if 0 /* Touch IC is Empty from Synaptics !! */
+		if ((strncmp(ts->fw_info.ic_fw_identifier, "PLG244", 6))&&(strncmp(ts->fw_info.ic_fw_identifier, "PLG208", 6))) {
+			TOUCH_INFO_MSG("There is no Touch IC. FW-upgrade is not executed\n");
 			goto out;
-		} else{
-			TOUCH_INFO_MSG("SSUNTEL G1F FW-upgrade is checking...\n");
-			if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
-				 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
-				 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
-				TOUCH_INFO_MSG("SSUNTEL G1F FW-upgrade is not executed\n");
+		}
+		#endif
+		
+		if (!strncmp(ts->fw_info.ic_fw_identifier, "PLG244", 6)) {
+			TOUCH_INFO_MSG("G1F PLG244 Touch IC\n");
+			TOUCH_INFO_MSG("ic_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10));
+			TOUCH_INFO_MSG("syna_img_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10));
+
+			if( (int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) > 10) {
+				TOUCH_INFO_MSG("G1F Touch IC has wrong FW, FW-upgrade is executed\n");
+			} else if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) > 10) {
+				TOUCH_INFO_MSG("Touch img is not for G1F, FW-upgrade is not executed\n");
 				goto out;
-			} else {
-				TOUCH_INFO_MSG("SSUNTEL G1F FW-upgrade is executed\n");
+			} else{
+				TOUCH_INFO_MSG("G1F FW-upgrade is checking...\n");
+				if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
+					 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
+					 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
+					TOUCH_INFO_MSG("G1F FW-upgrade is not executed\n");
+					goto out;
+				} else {
+					TOUCH_INFO_MSG("G1F FW-upgrade is executed\n");
+				}
 			}
 		}
-	} else if (ts->fw_info.fw_setting.ic_chip_rev == 1){
-		/* LGIT G1F ic_chip_rev = 1, touch id = 0V */
-		TOUCH_INFO_MSG("ic_chip_rev = 1, touch id = 0V\n");
 
-		if( (int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) > 50) {
-			TOUCH_INFO_MSG("Touch IC has wrong FW, LGIT G1F FW-upgrade is executed\n");
-		} else if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) > 50) {
-			TOUCH_INFO_MSG("Touch img is not for LGIT G1F, FW-upgrade is not executed\n");
-			goto out;
-		} else{
-			TOUCH_INFO_MSG("LGIT G1F FW-upgrade is checking...\n");
-			if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
-				 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
-				 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
-				TOUCH_INFO_MSG("LGIT G1F FW-upgrade is not executed\n");
-				goto out;
+		else if (!strncmp(ts->fw_info.ic_fw_identifier, "PLG208", 6)) {
+			TOUCH_INFO_MSG("G2 PLG208 Touch IC\n");
+			TOUCH_INFO_MSG("ic_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10));
+			TOUCH_INFO_MSG("syna_img_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10));
+
+			if(ts->fw_info.fw_setting.ic_chip_rev == 3) {
+				if( (int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) > 10) {
+					TOUCH_INFO_MSG("Old G1F Touch IC has wrong FW, FW-upgrade is executed\n");
+				} else if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) > 10) {
+					TOUCH_INFO_MSG("Touch img is not for G1F, FW-upgrade is not executed\n");
+					goto out;
+				} else{
+					TOUCH_INFO_MSG("Old G1F FW-upgrade is checking...\n");
+					if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
+						 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
+						 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
+						TOUCH_INFO_MSG("Old G1F FW-upgrade is not executed\n");
+						goto out;
+					} else {
+						TOUCH_INFO_MSG("Old G1F FW-upgrade is executed\n");
+					}
+				}
 			} else {
-				TOUCH_INFO_MSG("LGIT G1F FW-upgrade is executed\n");
+				if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) < 30) {
+					TOUCH_INFO_MSG("Touch img is not for G2, FW-upgrade is not executed\n");
+					goto out;
+				} else{
+						TOUCH_INFO_MSG("G2 FW-upgrade is checking...\n");
+						if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
+							 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
+							 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
+							TOUCH_INFO_MSG("G2 FW-upgrade is not executed\n");
+							goto out;
+						} else {
+							TOUCH_INFO_MSG("G2 FW-upgrade is executed\n");
+					}
+				}
 			}
 		}
-	} else if (ts->fw_info.fw_setting.ic_chip_rev == 3){
-		/* LGIT G2 Hybrid  ic_chip_rev = 3, touch id = 1.8V */
-		TOUCH_INFO_MSG("ic_chip_rev = 3, touch id = 1.8V\n");
 
-		if( (int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) < 50) {
-			TOUCH_INFO_MSG("Touch IC has wrong FW, LGIT G2 FW-upgrade is executed\n");
-		} else if( (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10) < 50) {
-			TOUCH_INFO_MSG("Touch img is not for LGIT G1F, FW-upgrade is not executed\n");
-			goto out;
-		} else{
-			TOUCH_INFO_MSG("LGIT G2 Hybrid FW-upgrade is checking...\n");
-			if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
+		else {
+			TOUCH_INFO_MSG("There is no Touch IC or Empty Touch IC\n");
+			TOUCH_INFO_MSG("ic_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10));
+			TOUCH_INFO_MSG("syna_img_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10));
+			
+			if(!strncmp(ts->fw_info.ic_fw_identifier, "s3404", 5)) {
+				TOUCH_INFO_MSG("Touch IC is initial mode!! FW-upgrade is executed\n");
+			} else if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_A) {
+				TOUCH_INFO_MSG("IC F/W Revision is not REV B. FW-upgrade is not executed\n");
+				goto out;
+			} else if(strncmp(ts->fw_info.ic_fw_version, ts->fw_info.syna_img_fw_version, 1)){
+				switch(ts->fw_info.fw_setting.curr_touch_vendor) {
+					case TOUCH_VENDOR_LGIT:
+						TOUCH_INFO_MSG("Panel changed [%s -> %s]!! FW-upgrade is executed\n", "TPK", "LGIT");
+						break;
+					case TOUCH_VENDOR_TPK:
+						TOUCH_INFO_MSG("Panel changed [%s -> %s]!! FW-upgrade is executed\n", "LGIT", "TPK");
+						break;
+					default:
+						TOUCH_INFO_MSG("Panel changed [unknown]!! FW-upgrade is executed\n");
+						break;
+				}
+			} else if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
 				 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
 				 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
-				TOUCH_INFO_MSG("LGIT G1F FW-upgrade is not executed\n");
+				TOUCH_INFO_MSG("FW-upgrade is not executed\n");
 				goto out;
 			} else {
-				TOUCH_INFO_MSG("LGIT G1F FW-upgrade is executed\n");
+				TOUCH_INFO_MSG("FW-upgrade is executed\n");
 			}
 		}
-	} else {
-		TOUCH_INFO_MSG("ic_chip_rev is invalid..., FW-upgrade is Skipped!\n");
-		goto out;
-	}
-} else {
-	TOUCH_INFO_MSG("There is no Touch IC or Empty Touch IC\n");
-	TOUCH_INFO_MSG("ic_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10));
-	TOUCH_INFO_MSG("syna_img_fw_version = %d\n",(int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10));
-	
-	if(!strncmp(ts->fw_info.ic_fw_identifier, "s3404", 5)) {
-		TOUCH_INFO_MSG("Touch IC is initial mode!! FW-upgrade is executed\n");
-	} else if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_A) {
-		TOUCH_INFO_MSG("IC F/W Revision is not REV B. FW-upgrade is not executed\n");
-		goto out;
-	} else if(strncmp(ts->fw_info.ic_fw_version, ts->fw_info.syna_img_fw_version, 1)){
-		switch(ts->fw_info.fw_setting.curr_touch_vendor) {
-			case TOUCH_VENDOR_LGIT:
-				TOUCH_INFO_MSG("Panel changed [%s -> %s]!! FW-upgrade is executed\n", "TPK", "LGIT");
-				break;
-			case TOUCH_VENDOR_TPK:
-				TOUCH_INFO_MSG("Panel changed [%s -> %s]!! FW-upgrade is executed\n", "LGIT", "TPK");
-				break;
-			default:
-				TOUCH_INFO_MSG("Panel changed [unknown]!! FW-upgrade is executed\n");
-				break;
-		}
-	} else if( ((int)simple_strtoul(&ts->fw_info.ic_fw_version[1], NULL, 10) >=
-		 (int)simple_strtoul(&ts->fw_info.syna_img_fw_version[1], NULL, 10))
-		 && !ts->fw_info.fw_upgrade.fw_force_upgrade) {
-		TOUCH_INFO_MSG("FW-upgrade is not executed\n");
-		goto out;
-	} else {
-		TOUCH_INFO_MSG("FW-upgrade is executed\n");
-	}
-}
 #else
 		if(!strncmp(ts->fw_info.ic_fw_identifier, "s3404", 5)) {
 			TOUCH_INFO_MSG("Touch IC is initial mode!! FW-upgrade is executed\n");
@@ -2829,13 +2814,6 @@ static irqreturn_t touch_thread_irq_handler(int irq, void *dev_id)
 
 #ifdef LGE_TOUCH_TIME_DEBUG
 	do_gettimeofday(&t_debug[TIME_THREAD_ISR_START]);
-#endif
-
-#if defined(A1_only)
-	if(touch_enable == 0){
-		TOUCH_INFO_MSG("%s : Interrupt Pin is disabled!!\n", __func__);
-		return IRQ_NONE;
-	}
 #endif
 
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
@@ -3852,11 +3830,17 @@ static ssize_t store_glove_finger_enable(struct lge_touch_data *ts, const char *
 	return count;
 }
 #endif
+
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
 static ssize_t store_touch_gesture(struct lge_touch_data *ts, const char *buf, size_t count)
 {
 	int value;
 	sscanf(buf, "%d", &value);
+
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_A){
+		touch_gesture_enable = 0;
+		return count;
+	}
 
 	if (value == touch_gesture_enable)
 		return count;
@@ -3891,29 +3875,6 @@ static ssize_t store_touch_gesture(struct lge_touch_data *ts, const char *buf, s
 }
 #endif
 
-#ifdef CONFIG_MACH_MSM8974_G2_DCM
-static ssize_t show_boo(struct lge_touch_data *ts, char *buf)
-{
-	int ret = 0;
-	ret = sprintf(buf, "%d\n", boo);
-	return ret;
-}
-
-static ssize_t store_boo(struct lge_touch_data *ts, const char *buf, size_t count)
-{
-	int ret = 0;
-	ret = sscanf(buf, "%d", &boo);
-
-	if(boo) {
-		TOUCH_INFO_MSG("DVFS_STAGE_DUAL\n");
-	} else {
-		TOUCH_INFO_MSG("DVFS_STAGE_NONE\n");
-	}
-
-	return count;
-}
-#endif
-
 static LGE_TOUCH_ATTR(platform_data, S_IRUGO | S_IWUSR, show_platform_data, NULL);
 static LGE_TOUCH_ATTR(firmware, S_IRUGO | S_IWUSR, show_fw_info, store_fw_upgrade);
 static LGE_TOUCH_ATTR(fw_ver, S_IRUGO | S_IWUSR, show_fw_ver, NULL);
@@ -3939,9 +3900,6 @@ static LGE_TOUCH_ATTR(glove_finger_enable, S_IRUGO | S_IWUSR, show_glove_finger_
 #endif
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
 static LGE_TOUCH_ATTR(touch_gesture, S_IRUGO | S_IWUSR, NULL, store_touch_gesture);
-#endif
-#ifdef CONFIG_MACH_MSM8974_G2_DCM
-static LGE_TOUCH_ATTR(boo, S_IRUGO | S_IWUSR, show_boo, store_boo);
 #endif
 
 static struct attribute *lge_touch_attribute_list[] = {
@@ -3970,9 +3928,6 @@ static struct attribute *lge_touch_attribute_list[] = {
 #endif
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
 	&lge_touch_attr_touch_gesture.attr,
-#endif
-#ifdef CONFIG_MACH_MSM8974_G2_DCM
-	&lge_touch_attr_boo.attr,
 #endif
 	NULL,
 };
@@ -4698,6 +4653,13 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
 	touch_disable_irq(ts->client->irq);
 	release_all_ts_event(ts);
 	touch_ic_init(ts);
+
+#ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_A){
+		touch_gesture_enable = 0;
+	}
+#endif
+
 	touch_enable_irq(ts->client->irq);
 	if(lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 		TOUCH_INFO_MSG("lge_get_boot_mode() is LGE_BOOT_MODE_CHARGERLOGO\n");
@@ -4933,19 +4895,20 @@ static int touch_fb_resume(struct device *device)
 
 #ifdef CUST_G2_TOUCH
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
-	if (touch_disable_irq_wake(ts->client->irq) != 0){
-		TOUCH_INFO_MSG("disable_irq_wake failed\n");
-	}
-
-		if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING){
-			TOUCH_INFO_MSG("Firmware is upgrading now. touch_resume is not executed !! \n");
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_B){
+		if (touch_disable_irq_wake(ts->client->irq) != 0){
+			TOUCH_INFO_MSG("disable_irq_wake failed\n");
+		}
+		if (ts->curr_pwr_state != POWER_OFF)
+			touch_power_cntl(ts, ts->pdata->role->suspend_pwr);
+		touch_power_cntl(ts, ts->pdata->role->resume_pwr);
+		msleep(ts->pdata->role->booting_delay);
+	} else{
+		if(ts->curr_pwr_state) {
+			TOUCH_INFO_MSG("touch_resume is not executed curr_pwr_state\n");
 			return 0;
 		}
-
-	if (ts->curr_pwr_state != POWER_OFF)
-		touch_power_cntl(ts, ts->pdata->role->suspend_pwr);
-	touch_power_cntl(ts, ts->pdata->role->resume_pwr);
-	msleep(ts->pdata->role->booting_delay);
+	}
 #else
 	if(ts->curr_pwr_state) {
 		TOUCH_INFO_MSG("touch_resume is not executed curr_pwr_state\n");
@@ -4976,16 +4939,24 @@ static int touch_fb_resume(struct device *device)
 	touch_power_cntl(ts, ts->pdata->role->resume_pwr);
 #endif
 #ifdef CUST_G2_TOUCH
+#ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_A){
+		touch_power_cntl(ts, ts->pdata->role->resume_pwr);
+	}
+#endif
+
 	if(ts->pdata->role->ghost_detection_enable) {
 		ts->gd_ctrl.is_resume = 1;
 	}
 #endif
 
 #ifdef CUST_G2_TOUCH_WAKEUP_GESTURE
-	if(touch_device_func->ic_ctrl) {
-		if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_DOUBLE_TAP_WAKEUP_MODE, 0) < 0){
-			TOUCH_ERR_MSG("IC_CTRL_DOUBLE_TAP_WAKEUP_MODE handling fail\n");
-			return 0;
+	if(ts->fw_info.fw_setting.ic_chip_rev == TOUCH_CHIP_REV_B) {
+		if(touch_device_func->ic_ctrl) {
+			if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_DOUBLE_TAP_WAKEUP_MODE, 0) < 0){
+				TOUCH_ERR_MSG("IC_CTRL_DOUBLE_TAP_WAKEUP_MODE handling fail\n");
+				return 0;
+			}
 		}
 	}
 #endif
@@ -5015,11 +4986,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		blank = evdata->data;
 		if (*blank == FB_BLANK_UNBLANK) {
 #ifdef CUST_G2_TOUCH
-			if(blank_status == true) {
-				return 0;
-			}
-			blank_status = true;
-
 			if(f54_window_crack_check_mode)
 				mdelay(200);
 #endif
@@ -5030,7 +4996,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 			touch_fb_resume(&ts->client->dev);
 			TOUCH_INFO_MSG("touch_resume\n");
 		} else if (*blank == FB_BLANK_POWERDOWN) {
-			blank_status = false;
 			touch_fb_suspend(&ts->client->dev);
 			TOUCH_INFO_MSG("touch_suspend\n");
 		}

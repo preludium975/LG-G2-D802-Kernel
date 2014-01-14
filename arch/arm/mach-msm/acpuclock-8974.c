@@ -52,48 +52,64 @@ static struct hfpll_data hfpll_data __initdata = {
 };
 
 static struct scalable scalable[] __initdata = {
-	[CPU0] = {
-		.hfpll_phys_base = 0xF908A000,
-		.l2cpmr_iaddr = 0x4501,
-		.sec_clk_sel = 2,
-		.vreg[VREG_CORE] = { "krait0",     1100000 },
-		.vreg[VREG_MEM]  = { "krait0_mem", 1050000 },
-		.vreg[VREG_DIG]  = { "krait0_dig", LVL_HIGH },
-		.vreg[VREG_HFPLL_A] = { "krait0_hfpll", 1800000 },
-	},
-	[CPU1] = {
-		.hfpll_phys_base = 0xF909A000,
-		.l2cpmr_iaddr = 0x5501,
-		.sec_clk_sel = 2,
-		.vreg[VREG_CORE] = { "krait1",     1100000 },
-		.vreg[VREG_MEM]  = { "krait1_mem", 1050000 },
-		.vreg[VREG_DIG]  = { "krait1_dig", LVL_HIGH },
-		.vreg[VREG_HFPLL_A] = { "krait1_hfpll", 1800000 },
-	},
-	[CPU2] = {
-		.hfpll_phys_base = 0xF90AA000,
-		.l2cpmr_iaddr = 0x6501,
-		.sec_clk_sel = 2,
-		.vreg[VREG_CORE] = { "krait2",     1100000 },
-		.vreg[VREG_MEM]  = { "krait2_mem", 1050000 },
-		.vreg[VREG_DIG]  = { "krait2_dig", LVL_HIGH },
-		.vreg[VREG_HFPLL_A] = { "krait2_hfpll", 1800000 },
-	},
-	[CPU3] = {
-		.hfpll_phys_base = 0xF90BA000,
-		.l2cpmr_iaddr = 0x7501,
-		.sec_clk_sel = 2,
-		.vreg[VREG_CORE] = { "krait3",     1100000 },
-		.vreg[VREG_MEM]  = { "krait3_mem", 1050000 },
-		.vreg[VREG_DIG]  = { "krait3_dig", LVL_HIGH },
-		.vreg[VREG_HFPLL_A] = { "krait3_hfpll", 1800000 },
-	},
-	[L2] = {
-		.hfpll_phys_base = 0xF9016000,
-		.l2cpmr_iaddr = 0x0500,
-		.sec_clk_sel = 2,
-		.vreg[VREG_HFPLL_A] = { "l2_hfpll", 1800000 },
-	},
+        [CPU0] = {
+                .hfpll_phys_base = 0xF908A000,
+                .l2cpmr_iaddr = 0x4501,
+                .sec_clk_sel = 2,
+#ifdef CONFIG_CPU_OVERCLOCK
+                .vreg[VREG_CORE] = { "krait0",     1200000 },
+#else
+                .vreg[VREG_CORE] = { "krait0",     1100000 },
+#endif
+                .vreg[VREG_MEM]  = { "krait0_mem", 1050000 },
+                .vreg[VREG_DIG]  = { "krait0_dig", LVL_HIGH },
+                .vreg[VREG_HFPLL_A] = { "krait0_hfpll", 1800000 },
+        },
+        [CPU1] = {
+                .hfpll_phys_base = 0xF909A000,
+                .l2cpmr_iaddr = 0x5501,
+                .sec_clk_sel = 2,
+#ifdef CONFIG_CPU_OVERCLOCK
+                .vreg[VREG_CORE] = { "krait1",     1200000 },
+#else
+                .vreg[VREG_CORE] = { "krait1",     1100000 },
+#endif
+                .vreg[VREG_MEM]  = { "krait1_mem", 1050000 },
+                .vreg[VREG_DIG]  = { "krait1_dig", LVL_HIGH },
+                .vreg[VREG_HFPLL_A] = { "krait1_hfpll", 1800000 },
+        },
+        [CPU2] = {
+                .hfpll_phys_base = 0xF90AA000,
+                .l2cpmr_iaddr = 0x6501,
+                .sec_clk_sel = 2,
+#ifdef CONFIG_CPU_OVERCLOCK
+                .vreg[VREG_CORE] = { "krait2",     1200000 },
+#else
+                .vreg[VREG_CORE] = { "krait2",     1100000 },
+#endif
+                .vreg[VREG_MEM]  = { "krait2_mem", 1050000 },
+                .vreg[VREG_DIG]  = { "krait2_dig", LVL_HIGH },
+                .vreg[VREG_HFPLL_A] = { "krait2_hfpll", 1800000 },
+        },
+        [CPU3] = {
+                .hfpll_phys_base = 0xF90BA000,
+                .l2cpmr_iaddr = 0x7501,
+                .sec_clk_sel = 2,
+#ifdef CONFIG_CPU_OVERCLOCK
+                .vreg[VREG_CORE] = { "krait3",     1200000 },
+#else
+                .vreg[VREG_CORE] = { "krait3",     1100000 },
+#endif
+                .vreg[VREG_MEM]  = { "krait3_mem", 1050000 },
+                .vreg[VREG_DIG]  = { "krait3_dig", LVL_HIGH },
+                .vreg[VREG_HFPLL_A] = { "krait3_hfpll", 1800000 },
+        },
+        [L2] = {
+                .hfpll_phys_base = 0xF9016000,
+                .l2cpmr_iaddr = 0x0500,
+                .sec_clk_sel = 2,
+                .vreg[VREG_HFPLL_A] = { "l2_hfpll", 1800000 },
+        },
 };
 
 static struct msm_bus_paths bw_level_tbl_v1[] __initdata = {
@@ -128,7 +144,7 @@ static struct l2_level l2_freq_tbl_v1[] __initdata = {
 	{ }
 };
 
-/*                                                      */
+/* LGE_CHANGE_S support factory process without battery */
 #ifdef CONFIG_MACH_MSM8974_VU3_KR
 #include "lge/acpuclock-vu3-factory.h"
 #else 
@@ -910,7 +926,7 @@ static struct pvs_table pvs_v2_lge_factory[NUM_SPEED_BINS][NUM_PVS] __initdata =
 	[2][7] = { acpu_freq_tbl_2p2g_pvs6_lge_factory, sizeof(acpu_freq_tbl_2p2g_pvs6_lge_factory) },
 
 };
-/*                                                      */
+/* LGE_CHANGE_S support factory process without battery */
 
 static struct acpu_level acpu_freq_tbl_v1_pvs0[] __initdata = {
 	{ 1, {  300000, PLL_0, 0,   0 }, L2(0),   825000,  73 },
@@ -1495,6 +1511,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs0[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19), 1070000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19), 1085000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19), 1100000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19), 1115000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1130000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1145000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1526,6 +1547,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs1[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19), 1045000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19), 1060000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19), 1075000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19), 1090000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1105000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1120000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1557,6 +1583,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs2[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19), 1020000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19), 1035000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19), 1050000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19), 1065000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1080000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1095000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1588,6 +1619,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs3[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19),  995000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19), 1010000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19), 1025000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19), 1040000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1055000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1070000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1619,6 +1655,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs4[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19),  975000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19),  985000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19), 1000000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19), 1015000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1030000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1045000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1650,6 +1691,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs5[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19),  955000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19),  965000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19),  975000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19),  990000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19), 1005000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19), 1020000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1681,6 +1727,11 @@ static struct acpu_level acpu_freq_tbl_2p3g_pvs6[] __initdata = {
 	{ 0, { 2112000, HFPLL, 1, 110 }, L2(19),  930000, 627 },
 	{ 0, { 2188800, HFPLL, 1, 114 }, L2(19),  940000, 659 },
 	{ 1, { 2265600, HFPLL, 1, 118 }, L2(19),  950000, 691 },
+#ifdef CONFIG_CPU_OVERCLOCK
+        { 1, { 2342400, HFPLL, 1, 122 }, L2(19),  965000, 714 },
+        { 1, { 2419200, HFPLL, 1, 126 }, L2(19),  980000, 738 },
+        { 1, { 2496000, HFPLL, 1, 130 }, L2(19),  995000, 761 },
+#endif
 	{ 0, { 0 } }
 };
 
@@ -1733,7 +1784,7 @@ static struct msm_bus_scale_pdata bus_scale_data __initdata = {
 	.name = "acpuclk-8974",
 };
 
-/*                                                      */
+/* LGE_CHANGE_S support factory process without battery */
 static struct acpuclk_krait_params acpuclk_8974_params_lge_factory __initdata = {
 	.scalable = scalable,
 	.scalable_size = sizeof(scalable),
@@ -1746,7 +1797,7 @@ static struct acpuclk_krait_params acpuclk_8974_params_lge_factory __initdata = 
 	.get_bin_info = get_krait_bin_format_b,
 	.stby_khz = 300000,
 };
-/*                                                      */
+/* LGE_CHANGE_S support factory process without battery */
 
 static struct acpuclk_krait_params acpuclk_8974_params __initdata = {
 	.scalable = scalable,
@@ -1771,7 +1822,7 @@ static void __init apply_v1_l2_workaround(void)
 	struct acpu_level *l;
 	int s, p;
 
-	/*                                                    */
+	/* LGE_CHANGE support factory process without battery */
 	enum lge_boot_mode_type boot_mode = lge_get_boot_mode();
 	if(boot_mode == LGE_BOOT_MODE_MINIOS || boot_mode == LGE_BOOT_MODE_FACTORY2 || boot_mode == LGE_BOOT_MODE_PIFBOOT2) {
 		for (s = 0; s < NUM_SPEED_BINS; s++)
@@ -1794,7 +1845,7 @@ static void __init apply_v1_l2_workaround(void)
 
 static int __init acpuclk_8974_probe(struct platform_device *pdev)
 {
-	/*                                                    */
+	/* LGE_CHANGE support factory process without battery */
 	enum lge_boot_mode_type boot_mode = lge_get_boot_mode();
 	if(boot_mode == LGE_BOOT_MODE_MINIOS || boot_mode == LGE_BOOT_MODE_FACTORY2 || boot_mode == LGE_BOOT_MODE_PIFBOOT2) {
 		if (SOCINFO_VERSION_MAJOR(socinfo_get_version()) == 1) {

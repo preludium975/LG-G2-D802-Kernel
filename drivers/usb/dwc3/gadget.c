@@ -2755,17 +2755,7 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 	dev_set_name(&dwc->gadget.dev, "gadget");
 
 	dwc->gadget.ops			= &dwc3_gadget_ops;
-#if defined(CONFIG_MACH_MSM8974_G2_SPR)\
-	|| defined(CONFIG_MACH_MSM8974_G2_DCM)\
-	|| defined(CONFIG_MACH_MSM8974_G2_KDDI)\
-	|| defined(CONFIG_MACH_MSM8974_G2_OPEN_AME)\
-	|| defined(CONFIG_MACH_MSM8974_G2_OPEN_COM)\
-	|| defined(CONFIG_MACH_MSM8974_G2_TEL_AU)\
-	|| defined(CONFIG_MACH_MSM8974_VU3_KR)
-	dwc->gadget.max_speed		= USB_SPEED_HIGH;
-#else
 	dwc->gadget.max_speed		= USB_SPEED_SUPER;
-#endif
 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
 	dwc->gadget.dev.parent		= dwc->dev;
 	dwc->gadget.sg_supported	= true;

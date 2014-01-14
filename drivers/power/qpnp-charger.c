@@ -25,7 +25,6 @@ int r_sense_uohm ;
 #ifdef LG_TEMP
 #define BOOT_MODE_CHARGERLOGO 2
 int vbatdet = 0 ;
-int count_count = 0 ;
 #endif
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -223,7 +222,6 @@ int count_count = 0 ;
 #define CHG_FLAGS_VCP_WA		BIT(0)
 #define BOOST_FLASH_WA			BIT(1)
 
-
 struct qpnp_chg_irq {
 	unsigned int		irq;
 	unsigned long		disabled;
@@ -350,7 +348,6 @@ struct qpnp_chg_chip {
 #endif
 #ifdef CONFIG_MACH_MSM8974_VU3_KR
 	struct delayed_work		charging_inform_work;
-	struct delayed_work     usbin_valid_work;
 #endif
 	struct power_supply		dc_psy;
 	struct power_supply		*usb_psy;
@@ -980,7 +977,6 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 }
 
 #define ENUM_T_STOP_BIT		BIT(0)
-#ifndef CONFIG_LGE_PM
 static irqreturn_t
 qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 {
@@ -1038,113 +1034,11 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 
 	return IRQ_HANDLED;
 }
-#else
-static irqreturn_t
-qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
-{
-	struct qpnp_chg_chip *chip = _chip;
-	int usb_present, host_mode ;
-#ifdef CONFIG_LGE_PM
-	vbatdet = 0 ;
-	if ( (chip->uevent_wake_lock.ws.name) != NULL )
-	wake_lock_timeout(&chip->uevent_wake_lock, HZ*2);
 
-    usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
-	host_mode = qpnp_chg_is_otg_en_set(chip);
-	printk("usbin-valid triggered: %d host_mode: %d\n",
-         usb_present, host_mode);
-
-     /* In host mode notifications cmoe from USB supply */
-    if (host_mode)
-         return IRQ_HANDLED;
-schedule_delayed_work(&chip->usbin_valid_work,
-                 msecs_to_jiffies(0));
-
-#endif
-
-
-	return IRQ_HANDLED;
-}
-static void
-qpnp_usbin_valid_work(struct work_struct *work)
-{
-    struct delayed_work *dwork = to_delayed_work(work);
-    struct qpnp_chg_chip *chip = container_of(dwork,
-                 struct qpnp_chg_chip, usbin_valid_work);
-
-    int usb_present;
-	int rc = 0 ;
-	struct qpnp_vadc_result usb_level;
-    usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
-    chip->adc_read_ch = USBIN;
-
-	rc = qpnp_vadc_read(chip->adc_read_ch, &usb_level);
-	if (rc) {
-		pr_err("Unable to read vbat rc=%d\n", rc);
-		return;
-	}
-
-	printk("usbin_valid_work triggered: pre_usb_present: %d cur_usb_present: %d count_count: %d usb_level: %lld\n",
-         chip->usb_present, usb_present, count_count, usb_level.physical );
-
-	if (( usb_present == 1 ) && ( usb_level.physical < 1500000 ) )
-	{
-		usb_present = 0 ;
-		printk("usbin_valid_work retry: pre_usb_present: %d cur_usb_present: %d count_count: %d usb_level: %lld\n",
-			chip->usb_present, usb_present, count_count, usb_level.physical );
-	}
-    if (chip->usb_present ^ usb_present) {
-        count_count = 0 ;
-		chip->usb_present = usb_present;
-#ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
-             schedule_delayed_work(&chip->battemp_work, HZ*1);
-#endif
-#ifdef CONFIG_LGE_PM
-        if (usb_present)
-        {
-            schedule_delayed_work(&chip->eoc_work,
-                 msecs_to_jiffies(1000));
-        }
-        else
-        {
-            qpnp_chg_usb_suspend_enable(chip, 1);
-            chip->chg_done = false;
-#ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
-             if(wake_lock_active(&chip->lcs_wake_lock))
-                 wake_unlock(&chip->lcs_wake_lock);
-#endif
-        }
-#else
-         if (!usb_present) {
-             qpnp_chg_usb_suspend_enable(chip, 1);
-             chip->chg_done = false;
-         } else {
-             schedule_delayed_work(&chip->eoc_work,
-                 msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-         }
-#endif
-		power_supply_set_present(chip->usb_psy, chip->usb_present);
-	}
-	else if ( (chip->usb_present == 1) && ( usb_present == 1 ) && ( count_count <= 2 ) )
-	{
-			count_count += 1 ;
-			schedule_delayed_work(&chip->usbin_valid_work,
-                 msecs_to_jiffies(50));
-	}
-
-	else if (  (chip->usb_present == 1) && ( usb_present == 1 ) && ( count_count == 3 ) )
-	{
-			count_count += 1 ;
-			schedule_delayed_work(&chip->usbin_valid_work,
-                 msecs_to_jiffies(300));
-	}
-	else if ( ( count_count == 4 ) && ( usb_level.physical < 1500000 ) )
-	panic("generate usbin_valid_work panic");
-	else if ( ( count_count == 4 ) && ( usb_level.physical > 1500000 ) )
-			count_count = 0 ;
-}
-#endif
-
+/* LGE_CHANGE_S, WAR of QMC Request untill CR493933 release at Case# 01206669, 2013-07-03, julius.moon@lge.com*/
+/* Case# 01206669 : [PMIC charger driver] System wake up after power collapse every time.*/
+/* Disable the battery-irq. we need to check this symptom with CR493933 later. however please keep your code until CR is released.*/
+#ifndef CONFIG_MACH_MSM8974_VU3_KR
 static irqreturn_t
 qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 {
@@ -1167,6 +1061,7 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static irqreturn_t
 qpnp_chg_dc_dcin_valid_irq_handler(int irq, void *_chip)
@@ -1586,6 +1481,7 @@ static void qpnp_adc_read_work(struct work_struct *work)
 		pr_err("Unable to read vbat rc=%d\n", rc);
 		return;
 	}		
+
 	pr_info("read adc %s=%lld\n",chip->adc_read_ch == USBIN ? "USBIN" : "DCIN" , results.physical);
 }
 #endif
@@ -2014,33 +1910,6 @@ get_prop_batt_temp(struct qpnp_chg_chip *chip)
 		pr_debug("battery fake mode : %d \n",pseudo_batt_info.mode);
 		return pseudo_batt_info.temp * 10;
 	}
-
-	if (chip->use_default_batt_values || !get_prop_batt_present(chip))
-		return DEFAULT_TEMP;
-
-	if (chip->revision > 0) {
-		rc = qpnp_vadc_read(LR_MUX1_BATT_THERM, &results);
-		if (rc) {
-			pr_debug("Unable to read batt temperature rc=%d\n", rc);
-			return 0;
-		}
-		pr_debug("get_bat_temp %d %lld\n",
-			results.adc_code, results.physical);
-		return (int)results.physical;
-	} else {
-		pr_debug("batt temp not supported for PMIC 1.0 rc=%d\n", rc);
-	}
-
-	/* return default temperature to avoid userspace
-	 * from shutting down unecessarily */
-	return DEFAULT_TEMP;
-}
-
-static int
-get_real_batt_temp(struct qpnp_chg_chip *chip)
-{
-	int rc = 0;
-	struct qpnp_vadc_result results;
 
 	if (chip->use_default_batt_values || !get_prop_batt_present(chip))
 		return DEFAULT_TEMP;
@@ -3027,6 +2896,10 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 		case SMBB_BAT_IF_SUBTYPE:
 		case SMBBP_BAT_IF_SUBTYPE:
 		case SMBCL_BAT_IF_SUBTYPE:
+/* LGE_CHANGE_S, WAR of QMC Request untill CR493933 release at Case# 01206669, 2013-07-03, julius.moon@lge.com*/
+/* Case# 01206669 : [PMIC charger driver] System wake up after power collapse every time.*/
+/* Disable the battery-irq. we need to check this symptom with CR493933 later. however please keep your code until CR is released.*/
+#ifndef CONFIG_MACH_MSM8974_VU3_KR
 			chip->batt_pres.irq = spmi_get_irq_byname(spmi,
 						spmi_resource, "batt-pres");
 			if (chip->batt_pres.irq < 0) {
@@ -3044,6 +2917,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 			}
 
 			enable_irq_wake(chip->batt_pres.irq);
+#endif
 			break;
 		case SMBB_USB_CHGPTH_SUBTYPE:
 		case SMBBP_USB_CHGPTH_SUBTYPE:
@@ -3708,14 +3582,12 @@ EXPORT_SYMBOL(lge_chg_cable_type);
 #endif
 
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
-static int temp_before = 0;
 static void qpnp_monitor_batt_temp(struct work_struct *work)
 {
 	struct qpnp_chg_chip *chip =
 		container_of(work, struct qpnp_chg_chip, battemp_work.work);
 	struct charging_info req;
 	struct charging_rsp res;
-	bool is_changed = false;
 	union power_supply_propval ret = {0,};
 
 	chip->batt_psy.get_property(&(chip->batt_psy),
@@ -3744,8 +3616,6 @@ static void qpnp_monitor_batt_temp(struct work_struct *work)
 
 	if (((res.change_lvl != STS_CHE_NONE) && req.is_charger) ||
 		(res.force_update == true)) {
-		is_changed = true;
-
 		if (res.change_lvl == STS_CHE_NORMAL_TO_DECCUR ||
 			(res.force_update == true && res.state == CHG_BATT_DECCUR_STATE &&
 			res.dc_current != DC_CURRENT_DEF)) {
@@ -3782,14 +3652,8 @@ static void qpnp_monitor_batt_temp(struct work_struct *work)
 		chip->not_chg = res.state;
 	}
 
-	if ((chip->btm_state ^ res.btm_state) || (temp_before != req.batt_temp)){
-		is_changed = true;
-		chip->btm_state = res.btm_state;
-		temp_before = req.batt_temp;
-	}
-
-	if (is_changed == true)
-		power_supply_changed(&chip->batt_psy);
+	chip->btm_state = res.btm_state;
+	power_supply_changed(&chip->batt_psy);
 
 	schedule_delayed_work(&chip->battemp_work,
 		MONITOR_BATTEMP_POLLING_PERIOD);
@@ -3845,7 +3709,7 @@ static void charging_information(struct work_struct *work)
 	rc = qpnp_chg_read(qpnp_chg, &bat_if_sts, INT_RT_STS(qpnp_chg->bat_if_base), 1);
 	rc = qpnp_chg_read(qpnp_chg, &chg_ctrl, qpnp_chg->chgr_base + CHGR_CHG_CTRL, 1);
 	rc = qpnp_chg_read(qpnp_chg, &bat_fet_sts, qpnp_chg->bat_if_base + SBMM_BAT_FET, 1);
-	bat_temp = get_real_batt_temp(qpnp_chg)/10;
+	bat_temp = get_prop_batt_temp(qpnp_chg)/10;
 	qpnp_vadc_read(LR_MUX3_PU2_XO_THERM,&xo_therm);
 	rc = qpnp_chg_read(chip, &chg_sts, INT_RT_STS(qpnp_chg->chgr_base), 1);
 	cable_info = lge_pm_get_cable_type();
@@ -4097,9 +3961,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 		INIT_WORK(&chip->adc_measure_work,
 			qpnp_bat_if_adc_measure_work);
 	}
-#ifdef CONFIG_LGE_PM
-	INIT_DELAYED_WORK(&chip->usbin_valid_work, qpnp_usbin_valid_work);
-#endif
+
 	wake_lock_init(&chip->eoc_wake_lock,
 		WAKE_LOCK_SUSPEND, "qpnp-chg-eoc-lock");
 #ifdef CONFIG_LGE_PM
@@ -4238,9 +4100,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	power_supply_set_present(chip->usb_psy,
 			qpnp_chg_is_usb_chg_plugged_in(chip));
 
-#ifdef CONFIG_WIRELESS_CHARGER
-	qpnp_chg_dc_dcin_valid_irq_handler(DCIN_VALID_IRQ, chip);
-#endif
 #if 0  //QCT workaround code, Temporary delete.
 	/* Set USB psy online to avoid userspace from shutting down if battery
 	 * capacity is at zero and no chargers online. */
@@ -4291,7 +4150,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 #ifdef CONFIG_LGE_PM
 	cancel_delayed_work_sync(&chip->arb_stop_work);
 	cancel_delayed_work_sync(&chip->battemp_work);
-	cancel_delayed_work_sync(&chip->usbin_valid_work);
+
 	device_remove_file(&spmi->dev, &dev_attr_at_charge);
 	device_remove_file(&spmi->dev, &dev_attr_at_chcomp);
 	device_remove_file(&spmi->dev, &dev_attr_at_pmrst);
@@ -4339,7 +4198,7 @@ static int qpnp_chg_suspend(struct device *dev)
 {
 	struct qpnp_chg_chip *chip = dev_get_drvdata(dev);
 	int rc = 0;
-#ifdef CONFIG_LGE_PM
+#ifndef CONFIG_LGE_PM
 	if (chip->bat_if_base) {
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + BAT_IF_VREF_BAT_THM_CTRL,
@@ -4355,7 +4214,6 @@ static int qpnp_chg_suspend(struct device *dev)
 #ifdef CONFIG_LGE_PM
 	cancel_delayed_work_sync(&chip->eoc_work);
 	cancel_delayed_work_sync(&chip->arb_stop_work);
-	cancel_delayed_work_sync(&chip->usbin_valid_work);
 #endif
 #ifdef CONFIG_WIRELESS_CHARGER
 	cancel_work_sync(&chip->dcin_tri_work);

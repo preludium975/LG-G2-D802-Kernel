@@ -111,13 +111,13 @@
 #define FLASH_TMR_SAFETY		0x00
 #define FLASH_FAULT_DETECT_MASK		0X80
 
-/*                                                                                          */
+/* LGE_CHANGE_S, Workaround code to set flash current as 1.2A, 2013-05-09, jinw.kim@lge.com */
 #if 0 // QCT request
 #define FLASH_HW_VREG_OK		0x80
 #else
 #define FLASH_HW_VREG_OK		0x40
 #endif
-/*                                                                                          */
+/* LGE_CHANGE_E, Workaround code to set flash current as 1.2A, 2013-05-09, jinw.kim@lge.com */
 
 #define FLASH_VREG_MASK			0xC0
 #define FLASH_STARTUP_DLY_MASK		0x02
@@ -591,7 +591,7 @@ static int leds_pwm_duty_pcts6[79] = {
 
 /* #7 ID_MISSED_NOTI (normal(G), DCM(RGB) */
 static int leds_pwm_duty_pcts7[79] = {
-#if defined(CONFIG_MACH_MSM8974_G2_DCM)
+#if defined(CONFIG_MACH_MSM8974_G2_DCM) || defined(CONFIG_MACH_MSM8974_G2_KDDI)
 	0, 49, 47, 39, 30, 20, 10, 2, 0, 0, /* red*1.6 */
 	0, 0, 49, 47, 39, 30, 20, 10, 2, 0,
 	0, 137, 130, 109, 82, 55, 27, 7, 0, 0,
@@ -897,7 +897,6 @@ struct qpnp_led_data *green_led = NULL;
 struct qpnp_led_data *blue_led = NULL;
 struct qpnp_led_data *kpdbl_lpg1 = NULL;
 struct qpnp_led_data *kpdbl_lpg2 = NULL;
-static int kpdbl_brightness_flag = 0;
 static int is_kpdbl_on = 0;
 
 extern void change_led_pattern(int pattern);
@@ -1096,8 +1095,8 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 	return 0;
 }
 
-/*                                                                                          */
-#if defined(CONFIG_MACH_MSM8974_G2_KDDI) || defined(CONFIG_MACH_MSM8974_VU3_LGU)	//QMC original
+/* LGE_CHANGE_S, Re-define the function to use workaround code 2013-06-27, jinw.kim@lge.com */
+#if 0	//QMC original
 static int qpnp_flash_regulator_operate(struct qpnp_led_data *led, bool on)
 {
 	int rc, i;
@@ -1111,11 +1110,11 @@ static int qpnp_flash_regulator_operate(struct qpnp_led_data *led, bool on)
 		return -EINVAL;
 	}
 
-	for (i = 0; i < led->num_leds; i++)
-		regulator_on |= led_array[i].flash_cfg->flash_on;
-
 	if (!on)
 		goto regulator_turn_off;
+
+	for (i = 0; i < led->num_leds; i++)
+		regulator_on |= led_array[i].flash_cfg->flash_on;
 
 	for (i = 0; i < led->num_leds; i++) {
 		if (!regulator_on && !led->flash_cfg->flash_on) {
@@ -1237,7 +1236,7 @@ regulator_turn_off:
 	return rc;
 }
 #endif
-/*                                                                                          */
+/* LGE_CHANGE_E, Re-define the function to use workaround code 2013-06-27, jinw.kim@lge.com */
 
 static int qpnp_torch_regulator_operate(struct qpnp_led_data *led, bool on)
 {
@@ -1282,12 +1281,12 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 		led->flash_cfg->current_prgm =
 			(val * FLASH_MAX_LEVEL / led->max_current);
 
-/*                                                                                          */
+/* LGE_CHANGE_S, Workaround code to set flash current as 1.2A, 2013-05-09, jinw.kim@lge.com */
 #if 0
 	led->flash_cfg->current_prgm =
 		led->flash_cfg->current_prgm >> FLASH_CURRENT_PRGM_SHIFT;
 #endif
-/*                                                                                          */
+/* LGE_CHANGE_E, Workaround code to set flash current as 1.2A, 2013-05-09, jinw.kim@lge.com */
 
 	if (!led->flash_cfg->current_prgm)
 		led->flash_cfg->current_prgm = FLASH_CURRENT_PRGM_MIN;
@@ -1320,8 +1319,11 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 					"Torch reg write failed(%d)\n", rc);
 				return rc;
 			}
+
+			/* LGE_CHANGE_S, To set lowest flash current for DCM, 2013-07-08, jinw.kim@lge.com */
 			if(val == 1)
 				led->flash_cfg->current_prgm = 0;
+			/* LGE_CHANGE_E, To set lowest flash current for DCM, 2013-07-08, jinw.kim@lge.com */
 
 			rc = qpnp_led_masked_write(led,
 				led->flash_cfg->current_addr,
@@ -1542,10 +1544,6 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 				KPDBL_MODULE_EN_MASK, KPDBL_MODULE_EN);
 #ifdef CONFIG_LEDS_PM8941_EMOTIONAL
 		led->cdev.brightness = led->cdev.brightness*28/100;
-		if (kpdbl_brightness_flag == 0) {
-			printk("[kpdbl LED] %s: %d\n", led->cdev.name, led->cdev.brightness);
-			kpdbl_brightness_flag++;
-		}
 #endif
 #if defined CONFIG_MACH_MSM8974_VU3_KR
 		printk("qpnp_kpdbl_set :led brightness : %d \n",led->cdev.brightness);
@@ -1578,10 +1576,6 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 		pwm_disable(led->kpdbl_cfg->pwm_cfg->pwm_dev);
 		rc = qpnp_led_masked_write(led, KPDBL_ENABLE(led->base),
 				KPDBL_MODULE_EN_MASK, KPDBL_MODULE_DIS);
-#ifdef CONFIG_LEDS_PM8941_EMOTIONAL
-		printk("[kpdbl LED] %s: %d\n", led->cdev.name, led->cdev.brightness);
-		kpdbl_brightness_flag = 0;
-#endif
 		if (rc) {
 			dev_err(&led->spmi_dev->dev,
 				"Failed to write led enable reg\n");
@@ -2051,7 +2045,7 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 		return rc;
 	}
 
-/*                                                                                         */
+/* LGE_CHANGE_S, Set threshold for flash when battery is low, 2013-06-28, jinw.kim@lge.com */
 	/* Set FLASH_VPH_PWR_DROOP
 	 * 7  	: 	0 = do not us this feature, 1 = enable this feature
 	 * 6:4	:	000 = 2.5V       011 = 2.8V           110 = 3.1V
@@ -2065,7 +2059,7 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 			"FLASH_VPH_PWR_DROOP reg write failed(%d)\n", rc);
 		return rc;
 	}
-/*                                                                                         */
+/* LGE_CHANGE_E, Set threshold for flash when battery is low, 2013-06-28, jinw.kim@lge.com */
 
 	led->flash_cfg->strobe_type = 0;
 

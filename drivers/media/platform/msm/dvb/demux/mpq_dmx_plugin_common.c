@@ -89,8 +89,8 @@ module_param(mpq_sdmx_scramble_odd, int, S_IRUGO | S_IWUSR);
 
 /* LGE_BROADCAST_FULLSEG { */
 /* Whether to use secure demux or bypass it. Use for debugging */
-//static int mpq_bypass_sdmx = 1;
-static int mpq_bypass_sdmx = 0;
+static int mpq_bypass_sdmx = 1;
+//static int mpq_bypass_sdmx = 0;
 /* LGE_BROADCAST_FULLSEG } */
 
 module_param(mpq_bypass_sdmx, int, S_IRUGO | S_IWUSR);
@@ -100,8 +100,7 @@ static int mpq_sdmx_proc_limit = MAX_TS_PACKETS_FOR_SDMX_PROCESS;
 module_param(mpq_sdmx_proc_limit, int, S_IRUGO | S_IWUSR);
 
 /* Debug flag for secure demux process */
-//static int mpq_sdmx_debug;
-static int mpq_sdmx_debug = 1;
+static int mpq_sdmx_debug;
 module_param(mpq_sdmx_debug, int, S_IRUGO | S_IWUSR);
 
 /* Global data-structure for managing demux devices */

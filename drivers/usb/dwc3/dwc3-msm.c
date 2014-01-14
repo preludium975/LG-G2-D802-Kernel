@@ -2340,11 +2340,6 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 
 			if (!init)
 				init = true;
-#ifdef CONFIG_MACH_MSM8974_G2_KDDI
-			mdwc->vbus_active = val->intval;
-			pr_info("%s : returned.\n", __func__);
-			return 0;
-#endif
 		}
 		mdwc->vbus_active = val->intval;
 		break;

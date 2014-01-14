@@ -40,11 +40,6 @@
 #define BL_ON        1
 #define BL_OFF       0
 
-#if defined(CONFIG_MACH_LGE) && !defined(CONFIG_MACH_MSM8974_VU3_KR) && !defined(CONFIG_MACH_MSM8974_Z_KR) && !defined(CONFIG_MACH_MSM8974_Z_US) && !defined(CONFIG_OLED_SUPPORT)
-#define PWM_THRESHOLD 110	// UI bar 28 %
-#define PWM_OFF 0
-#define PWM_ON 1
-#endif
 
 /* LGE_CHANGE
  * To turn backlight on by setting default brightness
@@ -112,16 +107,6 @@ int wireless_backlight_state(void)
 	return backlight_status;
 }
 EXPORT_SYMBOL(wireless_backlight_state);
-#endif
-
-#if defined(CONFIG_MACH_LGE) && !defined(CONFIG_MACH_MSM8974_VU3_KR) && !defined(CONFIG_MACH_MSM8974_Z_KR) && !defined(CONFIG_MACH_MSM8974_Z_US) && !defined(CONFIG_OLED_SUPPORT)
-static void bl_set_pwm_mode(int mode)
-{
-	if(mode)
-		lm3630_write_reg(main_lm3630_dev->client, 0x01, 0x09);
-	else
-		lm3630_write_reg(main_lm3630_dev->client, 0x01, 0x08);
-}
 #endif
 
 static void lm3630_hw_reset(void)
@@ -194,14 +179,6 @@ static void lm3630_set_main_current_level(struct i2c_client *client, int level)
 	store_level_used = 0;
 
 	mutex_lock(&dev->bl_mutex);
-
-#if defined(CONFIG_MACH_LGE) && !defined(CONFIG_MACH_MSM8974_VU3_KR) && !defined(CONFIG_MACH_MSM8974_Z_KR) && !defined(CONFIG_MACH_MSM8974_Z_US) && !defined(CONFIG_OLED_SUPPORT)
-	if (level < PWM_THRESHOLD)
-		bl_set_pwm_mode(PWM_OFF);
-	else
-		bl_set_pwm_mode(PWM_ON);
-#endif
-
 	if (level != 0) {
 		if (level > 0 && level <= min_brightness)
 			level = min_brightness;

@@ -833,9 +833,6 @@ static int ngd_slim_power_up(struct msm_slim_ctrl *dev)
 	timeout = wait_for_completion_timeout(&dev->reconf, HZ);
 	if (!timeout) {
 		pr_err("failed to received master capability");
-#ifdef CONFIG_MACH_MSM8974_VU3_KR
-		panic("failed to received master capability by vu3 audio team");
-#endif	
 		return -ETIMEDOUT;
 	}
 	if (cur_state == MSM_CTRL_DOWN)

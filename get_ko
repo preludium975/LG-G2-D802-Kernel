@@ -1,0 +1,4 @@
+#!/bin/bash
+rm -rf ../img/working/system/lib/modules
+mkdir ../img/working/system/lib/modules
+find . -name "*.ko" -exec cp {} ../img/working/system/lib/modules \;

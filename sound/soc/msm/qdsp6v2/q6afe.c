@@ -1151,9 +1151,6 @@ static int afe_send_cmd_port_start(u16 port_id)
 	if (ret) {
 		pr_err("%s: AFE enable for port %#x failed %d\n", __func__,
 		       port_id, ret);
-#ifdef CONFIG_MACH_MSM8974_VU3_KR
-		panic("AFE enable for port failed by vu3 audio team");
-#endif		
 	} else if (this_afe.task != current) {
 		this_afe.task = current;
 		pr_debug("task_name = %s pid = %d\n",
@@ -1349,12 +1346,8 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	ret = afe_apr_send_pkt(&config, &this_afe.wait[index]);
 	if (ret) {
 		pr_err("%s: AFE enable for port %#x failed\n", __func__,
-				port_id);		
-#ifdef CONFIG_MACH_MSM8974_VU3_KR
-		panic("AFE enable for port failed by vu3 audio team");
-#endif
+				port_id);
 		goto fail_cmd;
-
 	} else if (atomic_read(&this_afe.status) != 0) {
 		pr_err("%s: config cmd failed\n", __func__);
 		ret = -EINVAL;

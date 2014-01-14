@@ -2595,6 +2595,17 @@ skip_dma_resources:
 		goto err_probe_reqmem;
 	}
 
+#if !defined(CONFIG_MACH_MSM8974_Z_KR)
+	if (pdata && pdata->ver_reg_exists) {
+		enum msm_spi_qup_version ver =
+					msm_spi_get_qup_hw_ver(&pdev->dev, dd);
+		if (dd->qup_ver != ver)
+			dev_warn(&pdev->dev,
+			"%s: HW version different then initially assumed by probe",
+			__func__);
+	}
+#endif
+
 	if (pdata && pdata->rsl_id) {
 		struct remote_mutex_id rmid;
 		rmid.r_spinlock_id = pdata->rsl_id;
@@ -2654,6 +2665,7 @@ skip_dma_resources:
 
 	pclk_enabled = 1;
 
+#if defined(CONFIG_MACH_MSM8974_Z_KR)
 	if (pdata && pdata->ver_reg_exists) {
 		enum msm_spi_qup_version ver =
 					msm_spi_get_qup_hw_ver(&pdev->dev, dd);
@@ -2662,6 +2674,7 @@ skip_dma_resources:
 			"%s: HW version different then initially assumed by probe",
 			__func__);
 	}
+#endif
 
 	/* GSBI dose not exists on B-family MSM-chips */
 	if (dd->qup_ver != SPI_QUP_VERSION_BFAM) {

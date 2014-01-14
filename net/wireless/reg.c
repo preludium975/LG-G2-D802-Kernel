@@ -2187,12 +2187,17 @@ static int __set_regdom(const struct ieee80211_regdomain *rd)
 		 * However if a driver requested this specific regulatory
 		 * domain we keep it for its private use
 		 */
-		if (last_request->initiator == NL80211_REGDOM_SET_BY_DRIVER)
-			request_wiphy->regd = rd;
-		else
-			kfree(rd);
+		if (last_request->initiator == NL80211_REGDOM_SET_BY_DRIVER) {
+                        const struct ieee80211_regdomain *tmp;
 
-		rd = NULL;
+                        tmp = request_wiphy->regd;
+                        request_wiphy->regd = rd;
+                        kfree(tmp);
+                } else {
+                        kfree(rd);
+                }
+
+                rd = NULL;
 
 		reset_regdomains(false);
 		cfg80211_regdomain = intersected_rd;

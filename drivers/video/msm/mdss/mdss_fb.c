@@ -981,7 +981,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			bl_updated = 0;
 #endif
 
-#if defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_OLED_SUPPORT)
+#if defined(CONFIG_MACH_MSM8974_VU3_KR)
 			   flush_work_sync(&mfd->commit_work);
 #endif
 			ret = mfd->mdp.off_fnc(mfd);
