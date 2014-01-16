@@ -2133,9 +2133,6 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 		return -ENODEV;
 	}
 
-	if (!xhci->rh_bw)
-		goto no_bw;
-
 	num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
 	xhci->port_array = kzalloc(sizeof(*xhci->port_array)*num_ports, flags);
 	if (!xhci->port_array)
