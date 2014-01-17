@@ -59,14 +59,11 @@ static irqreturn_t mmc_cd_gpio_irqt(int irq, void *dev_id)
 		cd->status = status;
 
 		/* Schedule a card detection after a debounce timeout */
-		#ifdef CONFIG_MACH_LGE
-		/* LGE_UPDATE, 2013/07/16, G2-FS@lge.com
-		 * Reduce debounce time to make it more sensitive
-		 */
+#ifdef CONFIG_MACH_LGE
 		mmc_detect_change(host, 0);
-		#else
+#else
 		mmc_detect_change(host, msecs_to_jiffies(100));
-		#endif
+#endif
 	}
 out:
 	return IRQ_HANDLED;
@@ -122,8 +119,12 @@ void mmc_cd_gpio_free(struct mmc_host *host)
 {
 	struct mmc_cd_gpio *cd = host->hotplug.handler_priv;
 
+	if (!cd || !gpio_is_valid(cd->gpio))
+		return;
+
 	free_irq(host->hotplug.irq, host);
 	gpio_free(cd->gpio);
+	cd->gpio = -EINVAL;
 	kfree(cd);
 }
 EXPORT_SYMBOL(mmc_cd_gpio_free);
