@@ -39,6 +39,7 @@ struct module;
  */
 struct irq_desc {
 	struct irq_data		irq_data;
+	struct timer_rand_state *timer_rand_state;
 	unsigned int __percpu	*kstat_irqs;
 	irq_flow_handler_t	handle_irq;
 #ifdef CONFIG_IRQ_PREFLOW_FASTEOI
@@ -69,6 +70,9 @@ struct irq_desc {
 #endif
 	struct module		*owner;
 	const char		*name;
+#ifdef CONFIG_ZERO_WAIT
+	unsigned int            zw_wake_depth;
+#endif
 } ____cacheline_internodealigned_in_smp;
 
 #ifndef CONFIG_SPARSE_IRQ

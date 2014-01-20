@@ -24,6 +24,7 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/workqueue.h>
 #include <linux/regulator/consumer.h>
+#include <linux/zwait.h>
 
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)

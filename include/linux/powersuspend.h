@@ -1,7 +1,7 @@
 /* include/linux/powersuspend.h
  *
  * Copyright (C) 2007-2008 Google, Inc.
- * Copyright (C) 2013 Paul Reioux 
+ * Copyright (C) 2013 Paul Reioux
  *
  * Modified by Jean-Pierre Rasquin <yank555.lu@gmail.com>
  *
@@ -26,11 +26,11 @@
 
 #include <linux/list.h>
 
-#define POWER_SUSPEND_INACTIVE        0
-#define POWER_SUSPEND_ACTIVE        1
+#define POWER_SUSPEND_INACTIVE		0
+#define POWER_SUSPEND_ACTIVE		1
 
-#define POWER_SUSPEND_KERNEL        0
-#define POWER_SUSPEND_USERSPACE        1
+#define POWER_SUSPEND_KERNEL		0
+#define POWER_SUSPEND_USERSPACE		1
 
 struct power_suspend {
         struct list_head link;

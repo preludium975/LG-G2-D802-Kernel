@@ -41,6 +41,7 @@
 #include <linux/of_gpio.h>
 #include <mach/board.h>
 #include <linux/regulator/consumer.h>
+#include <linux/zwait.h>
 
 #include <linux/input/lge_touch_core.h>
 #define CUST_G2_TOUCH_WAKEUP_GESTURE
@@ -3862,6 +3863,9 @@ static ssize_t store_touch_gesture(struct lge_touch_data *ts, const char *buf, s
 {
 	int value;
 	sscanf(buf, "%d", &value);
+
+	if (is_zw_mode())
+		value = 0;
 
 	if (value == touch_gesture_enable)
 		return count;

@@ -157,8 +157,9 @@ void set_power_suspend_state(int new_state)
 
 void set_power_suspend_state_hook(int new_state)
 {
+	/* Yank555.lu : Only allow kernel hook changes in kernel mode */
         if (mode == POWER_SUSPEND_KERNEL)
-                set_power_suspend_state(new_state);  // Yank555.lu : Only allow kernel hook changes in kernel mode
+                set_power_suspend_state(new_state);
 }
 
 EXPORT_SYMBOL(set_power_suspend_state_hook);
@@ -176,12 +177,13 @@ static ssize_t power_suspend_state_store(struct kobject *kobj,
 {
         int data = 0;
 
-        if (mode != POWER_SUSPEND_USERSPACE) // Yank555.lu : Only allow sysfs changes in userspace mode
+	/* Yank555.lu : Only allow sysfs changes in userspace mode */
+        if (mode != POWER_SUSPEND_USERSPACE)
                 return -EINVAL;
 
         sscanf(buf, "%d\n", &data);
 
-        if(data == 1 || data == 0) {
+        if (data == 1 || data == 0) {
                 set_power_suspend_state(data);
                 pr_info("power suspend state requested => %d\n", data);
         }
@@ -208,12 +210,12 @@ static ssize_t power_suspend_mode_store(struct kobject *kobj,
 
         switch (data) {
                 case POWER_SUSPEND_KERNEL:
-                case POWER_SUSPEND_USERSPACE:        mode = data;
-                                                return count;
+                case POWER_SUSPEND_USERSPACE:
+			mode = data;
+			return count;
                 default:
                         return -EINVAL;
         }
-        
 }
 
 static struct kobj_attribute power_suspend_mode_attribute =
@@ -275,7 +277,7 @@ static int __init power_suspend_init(void)
                 return -ENOMEM;
         }
 
-        mode = POWER_SUSPEND_USERSPACE;
+        mode = POWER_SUSPEND_KERNEL;
 
         return 0;
 }
@@ -286,7 +288,7 @@ static void __exit power_suspend_exit(void)
                 kobject_put(power_suspend_kobj);
 
         destroy_workqueue(suspend_work_queue);
-} 
+}
 
 core_initcall(power_suspend_init);
 module_exit(power_suspend_exit);
