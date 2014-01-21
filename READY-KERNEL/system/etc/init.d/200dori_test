@@ -1,0 +1,10 @@
+#!/system/bin/sh
+
+# Harmless init.d test for Dorimanx Kernel Boot Script. do not DELETE.
+
+(
+	echo "init.d run is working!" > /data/dori_init_run_test;
+	sleep 30;
+	rm /data/dori_init_run_test;
+)&
+
