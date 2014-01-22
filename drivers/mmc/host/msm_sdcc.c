@@ -4343,26 +4343,29 @@ retry:
 		msmsdcc_dump_sdcc_state(host);
 		rc = -EAGAIN;
 
-		/* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-03-12, testcode for sd error debugging */
 		#if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE)
 		{
 			extern int lge_get_board_revno(void);
-			int bcmdhd_id = 2; // sdcc 2
+			int bcmdhd_id = 2; /* sdcc 2 */
 			#if defined(CONFIG_MACH_MSM8974_G2_KR) 
 			if (3 /*HW_REV_B*/ < lge_get_board_revno()) {
-			bcmdhd_id = 3; //sdcc 3
+			bcmdhd_id = 3; /* sdcc 3 */
 			}
 			#elif defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_MACH_MSM8974_G2_KDDI)
-			bcmdhd_id = 3; //sdcc 3
+			bcmdhd_id = 3; /* sdcc 3 */
+			#elif defined(CONFIG_MACH_MSM8974_B1_KR)
+			if (2 /*HW_REV_A*/ < lge_get_board_revno()) {
+			bcmdhd_id = 2; /* sdcc 2 */
+			} else {
+			bcmdhd_id = 3;  /* sdcc 3 */
+			}
 			#endif						
-			if( host->pdev->id == bcmdhd_id )
-			{
-			    rc = 0;
-			    //panic("Failed to tune.\n"); // please contact hayun.kim@lge.com
+			if (host->pdev->id == bcmdhd_id) {
+				rc = 0;
+				/* panic("Failed to tune.\n"); */ /*                                  */
 			}
 		}
 		#endif
-		/* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-03-12, testcode for sd error debugging */
 	}
 
 kfree:
@@ -5920,7 +5923,7 @@ err:
 /* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
 #if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE) //joon For device tree.
 extern int sdc2_status_register(void (*cb)(int card_present, void *dev), void *dev);
-extern unsigned int sdc2_status(struct device* );
+extern unsigned int sdc2_status(struct device *);
 #endif
 /* LGE_CHANGE_E, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
 static int
@@ -6300,29 +6303,34 @@ msmsdcc_probe(struct platform_device *pdev)
 	 * Setup card detect change
 	 */
 
-/* LGE_CHANGE_S, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
-#if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE) //joon For device tree.
+/*                                                                    */
+#if defined(CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE) /* joon For device tree. */
 {
 	extern int lge_get_board_revno(void);
-	int bcmdhd_id = 2; // sdcc 2
-	#if defined(CONFIG_MACH_MSM8974_G2_KR) 
+	int bcmdhd_id = 2; /* sdcc 2 */
+	#if defined(CONFIG_MACH_MSM8974_G2_KR)
 	if (3 /*HW_REV_B*/ < lge_get_board_revno()) {
-		bcmdhd_id = 3; //sdcc 3
+		bcmdhd_id = 3; /* sdcc 3 */
 	}
 	#elif defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_MACH_MSM8974_G2_KDDI)
-		bcmdhd_id = 3; //sdcc 3
-	#endif	
+		bcmdhd_id = 3; /* sdcc 3 */
+	#elif defined(CONFIG_MACH_MSM8974_B1_KR)
+	if (2 /*HW_REV_A*/ < lge_get_board_revno()) {
+		bcmdhd_id = 2; /* sdcc 2 */
+	} else {
+		 bcmdhd_id = 3; /* sdcc 3 */
+	}
+	#endif
+
 	printk("J:%s-%d> plat->nonremovable = %d\n", __FUNCTION__, host->pdev->id, plat->nonremovable );
 
-	if( host->pdev->id == bcmdhd_id )
-	{
+	if (host->pdev->id == bcmdhd_id) {
 		plat->register_status_notify = sdc2_status_register;
 		plat->status = sdc2_status;
 	}
 }
 #endif
-/* LGE_CHANGE_E, [WiFi][hayun.kim@lge.com], 2013-01-22, Wifi Bring Up */
-
+/*                                                                    */
 	if (!plat->status_gpio)
 		plat->status_gpio = -ENOENT;
 	if (!plat->wpswitch_gpio)

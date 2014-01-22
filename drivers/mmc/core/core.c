@@ -3676,7 +3676,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			printk("J:%s-mmc_card_sdio, host->index=%d\n", __FUNCTION__, host->index);
 			return 0;
 		}
-#endif //CONFIG_BCMDHD_MODULE
+#endif /* CONFIG_BCMDHD_MODULE */
 		mmc_detect_change(host, 0);
 		break;
 
