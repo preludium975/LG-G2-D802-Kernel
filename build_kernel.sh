@@ -31,14 +31,10 @@ export HOST=`uname -n`;
 
 # begin by ensuring the required directory structure is complete, and empty
 echo "Initialising................."
-if [ -e ../LG-G2-D802-Ramdisk/lib/modules ]; then
-	rm -rf ../LG-G2-D802-Ramdisk/lib/modules
-fi;
 rm -rf $KERNELDIR/READY-KERNEL/boot
 rm -f $KERNELDIR/READY-KERNEL/*.zip
 rm -f $KERNELDIR/READY-KERNEL/*.img
 mkdir -p $KERNELDIR/READY-KERNEL/boot
-mkdir -p ../LG-G2-D802-Ramdisk/lib/modules/
 
 if [ -d ../ramdisk-tmp ]; then
 	rm -rf ../ramdisk-tmp/*
