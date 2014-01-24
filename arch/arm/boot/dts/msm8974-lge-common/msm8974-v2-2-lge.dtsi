@@ -28,15 +28,3 @@
 
 	qcom,misc-ref = <&pm8941_misc>;
 };
-
-/* At first, SPMI polling method is applied on MSM8974v2.2 only */
-&spmi_bus {
-	qcom,pm8941@0 {
-		vadc@3100 {
-			qcom,vadc-poll-eoc;
-		};
-		iadc@3600 {
-			qcom,iadc-poll-eoc;
-		};
-	};
-};

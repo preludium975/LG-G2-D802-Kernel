@@ -29,13 +29,13 @@
 	};
 
 	i2c@f9967000 {
-		lm3630_rev_b@38 {
+		lm3630_rev_a@38 {
 			status = "ok";
 			lm3630,enable_pwm = <1>;
 			revision = "...rev_a";
 		};
 
-		lm3630_rev_c@38 {
+		lm3630_rev_b@38 {
 			status = "ok";
 			lm3630,enable_pwm = <1>;
 			revision = "rev_b...";
