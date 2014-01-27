@@ -124,7 +124,6 @@ static ssize_t qfusing_show(struct device *dev, struct device_attribute *attr, c
 		verification_check_value = 0;
 		printk("%s: verification fail 1\n", __func__);
 	}
-	//defensive code
 	verification_check_value = qfprom_verification_blow_data();
 	printk("verification_check_value = %x \n", verification_check_value);
 			
@@ -136,7 +135,6 @@ static ssize_t qfusing_show(struct device *dev, struct device_attribute *attr, c
 		verification_check_value = 0;
 		printk("%s: verification fail 2\n", __func__);
 	}
-	//defensive code
 	verification_check_value = qfprom_verification_blow_data();
 	printk("verification_check_value = %x \n", verification_check_value);
 	

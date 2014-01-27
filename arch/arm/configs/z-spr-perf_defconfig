@@ -671,10 +671,5 @@ CONFIG_INET6_XFRM_MODE_BEET=y
 #LGE_CHANGE_E, [LGE_DATA][VPN_Configuration], shpark82.park@lge.com, 2013-03-19
 #donguk.ki@lge.com Immersion Vib
 CONFIG_TSPDRV=y
-
-#
-# DIAG LGE SLATE
-#
-CONFIG_LGE_SLATE=y
 #APPLY FIPS MODULE
 CONFIG_CRYPTO_DEV_KFIPS=y

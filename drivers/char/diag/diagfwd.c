@@ -465,14 +465,12 @@ void diag_smd_send_req(struct diag_smd_info *smd_info)
 
       if (smd_info->ch && !buf &&
 		(driver->logging_mode == DM_DEV_MODE)) {
-//			chk_logging_wakeup();
 	  	  lge_dm_dev_tty->set_logging = 1;
 		  wake_up_interruptible(&lge_dm_dev_tty->waitq);
 	}
 
       if (smd_info->ch && !buf &&
 		(driver->logging_mode == DM_APP_MODE)) {
-//			chk_logging_wakeup();
 	  	  lge_dm_tty->set_logging = 1;
 		  wake_up_interruptible(&lge_dm_tty->waitq);
 	}

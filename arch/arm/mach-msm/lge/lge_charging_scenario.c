@@ -18,7 +18,7 @@
 #include <mach/lge_charging_scenario.h>
 #include <linux/string.h>
 
-/* For LGE charging scenario debug */
+/*                                 */
 #ifdef DEBUG_LCS
 /* For fake battery temp' debug */
 #ifdef DEBUG_LCS_DUMMY_TEMP
@@ -42,8 +42,8 @@ static struct batt_temp_table chg_temp_table[CHG_MAXIDX] = {
 static struct batt_temp_table chg_temp_table[CHG_MAXIDX] = {
 	{INT_MIN,       -11,    CHG_BATTEMP_BL_M11},
 	{    -10,        -5,    CHG_BATTEMP_M10_M5},
-	{     -4,        41,    CHG_BATTEMP_M4_41},
-	{     42,        45,    CHG_BATTEMP_42_45},
+	{     -4,        43,    CHG_BATTEMP_M4_41},
+	{     44,        45,    CHG_BATTEMP_42_45},
 	{     46,        55,    CHG_BATTEMP_46_OT},
 	{     56,   INT_MAX,    CHG_BATTEMP_AB_OT},
 };
@@ -174,7 +174,7 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 			res->force_update = true;
 		} else
 			res->force_update = false;
-	} else 
+	} else
 		res->force_update = false;
 
 	pre_state = charging_state;
