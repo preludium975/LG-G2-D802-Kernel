@@ -1,0 +1,76 @@
+#!/bin/bash
+# export ARCH=arm
+# export CROSS_COMPILE=/home/savoca/toolchains/arm-eabi-4.7.4_linaro/bin/arm-eabi-
+build=/home/savoca/img/builds/lg
+version=0.1.4
+rom="lg"
+rm -rf out
+mkdir out
+mkdir out/tmp
+echo "Checking for build..."
+if [ -f arch/arm/boot/zImage ]; then
+	cp arch/arm/boot/zImage out
+	rm -rf ozip/system/lib/modules
+	mkdir ozip/system/lib/modules
+	find . -name "*.ko" -not -path "ozip/*" -exec cp {} ozip/system/lib/modules \;
+else
+	echo "Nothing has been made..."
+	exit 0
+fi
+
+echo "Unpacking boot.img..."
+if [ -f ozip/boot.img ]; then
+	unpackbootimg -i ozip/boot.img -o out
+	mv ozip/boot.img out/tmp
+else
+	echo "No boot.img found..."
+	exit 0
+fi
+
+echo "Making boot.img..."
+if [ -f out/boot.img-zImage ]; then
+	base=0x00000000
+	ramdisk_offset=0x05000000
+	tags_offset=0x04800000
+	cmdline="console=ttyHSL0,115200,n8 androidboot.hardware=g2 user_debug=31 msm_rtb.filter=0x0"
+	mkbootimg --kernel out/zImage --ramdisk out/boot.img-ramdisk.* --cmdline "$cmdline" --base $base --pagesize 2048 --ramdisk_offset $ramdisk_offset --tags_offset $tags_offset --dt out/boot.img-dt.img -o ozip/boot.img
+else
+	echo "boot.img failed to unpack, check last step..."
+	mv out/tmp/boot.img ozip
+	exit 0
+fi
+
+echo "Pick variant..."
+select choice in d800 d801 d802 d803 ls980 vs980
+do
+case "$choice" in
+	"d800")
+		variant="d800"
+		break;;
+	"d801")
+		variant="d801"
+		break;;
+	"d802")
+		variant="d802"
+		break;;
+	"d803")
+		variant="d803"
+		break;;
+	"ls980")
+		variant="ls980"
+		break;;
+	"vs980")
+		variant="vs980"
+		break;;
+esac
+done
+
+echo "Zipping..."
+cd ozip
+zip -r ../furnace-$version-"$rom"_"$variant".zip .
+mv ../furnace-$version-"$rom"_"$variant".zip $build
+cd ..
+rm -rf out
+rm -rf ozip
+mkdir ozip
+echo "Done..."
