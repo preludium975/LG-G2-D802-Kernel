@@ -12,13 +12,13 @@
 
 /dts-v1/;
 
-/include/ "../msm8974-lge-common/msm8974-v2-lge.dtsi"
-/include/ "msm8974-g2-vzw.dtsi"
+/include/ "msm8974-lge-common/msm8974-v2-lge.dtsi"
+/include/ "msm8974-g2-tmo_us/msm8974-g2-tmo_us.dtsi"
 
 / {
-	model = "Qualcomm MSM 8974v2 G2 VZW";
+	model = "Qualcomm MSM 8974v2 G2 TMUS";
 	compatible = "qcom,msm8974";
-	qcom,msm-id = <126 113 0x20000>;
+	qcom,msm-id = <126 115 0x20000>;
 };
 
 &usb3 {

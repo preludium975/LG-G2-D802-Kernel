@@ -12,11 +12,11 @@
 
 /dts-v1/;
 
-/include/ "../msm8974-lge-common/msm8974-lge.dtsi"
-/include/ "msm8974-g2-ca.dtsi"
+/include/ "msm8974-lge-common/msm8974-lge.dtsi"
+/include/ "msm8974-g2-spr/msm8974-g2-spr.dtsi"
 
 / {
-	model = "Qualcomm MSM 8974 G2 Canada";
+	model = "Qualcomm MSM 8974 G2 SPR";
 	compatible = "qcom,msm8974";
-	qcom,msm-id = <126 117 0>;
+	qcom,msm-id = <126 114 0>;
 };
