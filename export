@@ -1,8 +1,8 @@
 #!/bin/bash
 # export ARCH=arm
 # export CROSS_COMPILE=/home/savoca/toolchains/arm-eabi-4.7.4_linaro/bin/arm-eabi-
-build=/home/savoca/img/builds/lg
-version=0.1.4
+build=/home/savoca/furnace_output/lg
+version="1.5.0"
 rom="lg"
 rm -rf out
 mkdir out
