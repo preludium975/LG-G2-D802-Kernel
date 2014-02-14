@@ -2,8 +2,9 @@
 # export ARCH=arm
 # export CROSS_COMPILE=/home/savoca/toolchains/arm-eabi-4.7.4_linaro/bin/arm-eabi-
 build=/home/savoca/furnace_output/lg
-version="1.5.2"
+version="1.6.0"
 rom="lg"
+ramdisk=ramdisk
 rm -rf out
 mkdir out
 mkdir out/tmp
