@@ -1580,10 +1580,11 @@ void input_reset_device(struct input_dev *dev)
                                    
                                
  */
-/*		spin_lock_irq(&dev->event_lock);
-		input_dev_release_keys(dev);
-		spin_unlock_irq(&dev->event_lock);
-*/
+/* 		if (!test_bit(INPUT_PROP_NO_DUMMY_RELEASE, dev->propbit)) {
+			spin_lock_irq(&dev->event_lock);
+			input_dev_release_keys(dev);
+			spin_unlock_irq(&dev->event_lock);
+		} */
 	}
 
 	mutex_unlock(&dev->mutex);
