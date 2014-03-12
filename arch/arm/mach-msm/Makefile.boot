@@ -68,6 +68,14 @@ ifeq ($(CONFIG_MACH_LGE),n)
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-fluid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-liquid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-mtp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-pm8941-cdp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-pm8941-fluid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-pm8941-liquid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-pm8941-mtp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-cdp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-liquid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-mtp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pma8084-pm8941-mtp.dtb
 else ifneq ($(CONFIG_DTS_TARGET),"")
         dtb-$(CONFIG_MACH_MSM8974_G2_KR)	+= msm8974-g2-kr.dtb
         dtb-$(CONFIG_MACH_MSM8974_G2_KR)	+= msm8974-v2-g2-kr.dtb
@@ -192,5 +200,5 @@ initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
-	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-sim.dtb
-	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-rumi.dtb
+	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= ../msmsamarium-sim.dtb
+	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= ../msmsamarium-rumi.dtb
