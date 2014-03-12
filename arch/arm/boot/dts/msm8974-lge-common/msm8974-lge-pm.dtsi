@@ -72,6 +72,7 @@
 			ti,pre-chg-current-ma = <256>;
 			ti,sys-vmin-mv = <3500>;
 			ti,vin-limit-mv = <4360>;
+			ti,icl-vbus-mv = <4400>;
 
 			lge,no-init-cable = <0 0 0>;
 			lge,cable-mhl-1k = <5000 500 500>;
@@ -131,6 +132,7 @@
 	qcom,msm-thermal {
 		qcom,limit-temp = <80>;
 		qcom,temp-hysteresis = <5>;
+                qcom,core-limit-temp = <90>;
 		qcom,core-temp-hysteresis = <5>;
 	};
 
@@ -147,7 +149,11 @@
 &spmi_bus {
 	qcom,pm8941@0 {
 		qcom,power-on@800 {
+			qcom,s3-debounce = <64>;
 			qcom,pon_2 {
+				qcom,disable = <1>;
+			};
+			qcom,pon_3 {
 				qcom,disable = <1>;
 			};
 		};

@@ -15,6 +15,12 @@
 /include/ "msm8974-leds.dtsi"
 /include/ "msm8974-camera-sensor-cdp.dtsi"
 
+/ {
+	aliases {
+		serial0 = &blsp1_uart1;
+	};
+};
+
 &soc {
 	serial@f991e000 {
 		status = "ok";
@@ -34,6 +40,22 @@
 	};
 
 	i2c@f9924000 {
+		synaptics@20 {
+			compatible = "synaptics,rmi4";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <61 0x2008>;
+			vdd-supply = <&pm8941_l18>;
+			vcc_i2c-supply = <&pm8941_lvs1>;
+			synaptics,reset-gpio = <&msmgpio 60 0x00>;
+			synaptics,irq-gpio = <&msmgpio 61 0x2008>;
+			synaptics,display-coords = <0 0 1079 1919>;
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+			synaptics,do-lockdown;
+		};
+
 		atmel_mxt_ts@4a {
 			compatible = "atmel,mxt-ts";
 			reg = <0x4a>;
@@ -48,6 +70,7 @@
 			atmel,i2c-pull-up;
 			atmel,no-force-update;
 			atmel,cfg_1 {
+				atmel,fw-name = "atmel_8974_fluid_v1_0_AA.hex";
 				atmel,family-id = <0x82>;
 				atmel,variant-id = <0x19>;
 				atmel,version = <0x10>;
@@ -228,6 +251,7 @@
 		hsic,strobe-pad-offset = <0x2050>;
 		hsic,data-pad-offset = <0x2054>;
 		qcom,phy-susp-sof-workaround;
+		hsic,vdd-voltage-level = <1 5 7>;
 
 		qcom,msm-bus,name = "hsic";
 		qcom,msm-bus,num-cases = <2>;
@@ -252,63 +276,61 @@
 	};
 };
 
-&spmi_bus {
-	qcom,pm8941@1 {
-		qcom,leds@d800 {
-			status = "okay";
-			qcom,wled_0 {
-				label = "wled";
-				linux,name = "wled:backlight";
-				linux,default-trigger = "bkl-trigger";
-				qcom,cs-out-en;
-				qcom,op-fdbck = <1>;
-				qcom,default-state = "on";
-				qcom,max-current = <25>;
-				qcom,ctrl-delay-us = <0>;
-				qcom,boost-curr-lim = <3>;
-				qcom,cp-sel = <0>;
-				qcom,switch-freq = <2>;
-				qcom,ovp-val = <2>;
-				qcom,num-strings = <1>;
-				qcom,id = <0>;
-			};
+&pm8941_lsid1 {
+	qcom,leds@d800 {
+		status = "okay";
+		qcom,wled_0 {
+			label = "wled";
+			linux,name = "wled:backlight";
+			linux,default-trigger = "bkl-trigger";
+			qcom,cs-out-en;
+			qcom,op-fdbck = <1>;
+			qcom,default-state = "on";
+			qcom,max-current = <25>;
+			qcom,ctrl-delay-us = <0>;
+			qcom,boost-curr-lim = <5>;
+			qcom,cp-sel = <0>;
+			qcom,switch-freq = <11>;
+			qcom,ovp-val = <2>;
+			qcom,num-strings = <3>;
+			qcom,id = <0>;
 		};
+	};
 
-		qcom,leds@d900 {
-			status = "disabled";
-		};
+	qcom,leds@d900 {
+		status = "disabled";
+	};
 
-		qcom,leds@da00 {
-			status = "disabled";
-		};
+	qcom,leds@da00 {
+		status = "disabled";
+	};
 
-		qcom,leds@db00 {
-			status = "disabled";
-		};
+	qcom,leds@db00 {
+		status = "disabled";
+	};
 
-		qcom,leds@dc00 {
-			status = "disabled";
-		};
+	qcom,leds@dc00 {
+		status = "disabled";
+	};
 
-		qcom,leds@dd00 {
-			status = "disabled";
-		};
+	qcom,leds@dd00 {
+		status = "disabled";
+	};
 
-		qcom,leds@de00 {
-			status = "disabled";
-		};
+	qcom,leds@de00 {
+		status = "disabled";
+	};
 
-		qcom,leds@df00 {
-			status = "disabled";
-		};
+	qcom,leds@df00 {
+		status = "disabled";
+	};
 
-		qcom,leds@e000 {
-			status = "disabled";
-		};
+	qcom,leds@e000 {
+		status = "disabled";
+	};
 
-		qcom,leds@e100 {
-			status = "disabled";
-		};
+	qcom,leds@e100 {
+		status = "disabled";
 	};
 };
 
@@ -407,6 +429,8 @@
 	qcom,rx-gpio = <&msmgpio 42 0x00>;
 	qcom,cts-gpio = <&msmgpio 43 0x00>;
 	qcom,rfr-gpio = <&msmgpio 44 0x00>;
+	qcom,inject-rx-on-wakeup = <1>;
+	qcom,rx-char-to-inject = <0xFD>;
 };
 
 &usb3 {
@@ -600,6 +624,13 @@
 	};
 
 	gpio@e300 { /* GPIO 36 */
+		qcom,mode = <1>;  /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>; /* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>; /* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,src-sel = <3>; /* QPNP_PIN_SEL_FUNC_2 */
+		qcom,master-en = <1>;
 	};
 };
 

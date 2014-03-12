@@ -17,6 +17,21 @@
  */
 
 /include/ "msm8974.dtsi"
+
+/include/ "msm-pm8x41-rpm-regulator.dtsi"
+/include/ "msm-pm8841.dtsi"
+&spmi_bus {
+	pm8941_lsid0: qcom,pm8941@0 {
+		reg = <0x0>;
+	};
+	pm8941_lsid1: qcom,pm8941@1 {
+		reg = <0x1>;
+	};
+};
+/include/ "msm-pm8941.dtsi"
+/include/ "msm8974-regulator.dtsi"
+/include/ "msm8974-clock.dtsi"
+
 /include/ "msm8974-v2-iommu.dtsi"
 /include/ "msm8974-v2-iommu-domains.dtsi"
 /include/ "msm8974-v2-pm.dtsi"
@@ -43,14 +58,20 @@
 	qcom,msm-bus,vectors-KBps =
 		/* Off */
 		<26 512 0 0>, <89 604 0 0>,
+		/* Sub-SVS / SVS */
+		<26 512 0 1600000>, <89 604 0 3000000>,
 		/* SVS */
 		<26 512 0 2400000>, <89 604 0 3000000>,
 		/* Nominal / SVS */
-		<26 512 0 4656000>, <89 604 0 3000000>,
+		<26 512 0 4912000>, <89 604 0 3000000>,
+		/* SVS / Nominal */
+		<26 512 0 2400000>, <89 604 0 5120000>,
 		/* Nominal */
-		<26 512 0 4656000>, <89 604 0 5120000>,
+		<26 512 0 4912000>, <89 604 0 5120000>,
 		/* Turbo / Nominal */
 		<26 512 0 7464000>, <89 604 0 5120000>,
+		/* Nominal / Turbo */
+		<26 512 0 4912000>, <89 604 0 6400000>,
 		/* Turbo */
 		<26 512 0 7464000>, <89 604 0 6400000>;
 };
@@ -66,6 +87,7 @@
 	qcom,mdss-has-bwc;
 	qcom,mdss-has-decimation;
 	qcom,mdss-ad-off = <0x0013100 0x00013300>;
+	vdd-cx-supply = <&pm8841_s2_corner>;
 };
 
 &mdss_hdmi_tx {
@@ -135,4 +157,20 @@
 
 &tspp {
 	vdd_cx-supply = <&pm8841_s2_corner>;
+};
+
+&krait_regulator_pmic {
+	status = "ok";
+
+	qcom,ctl@2000 {
+		status = "ok";
+	};
+
+	qcom,ps@2100 {
+		status = "ok";
+	};
+
+	qcom,freq@2200 {
+		status = "ok";
+	};
 };
