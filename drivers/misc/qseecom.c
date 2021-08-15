@@ -943,6 +943,19 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 		return -ENOMEM;
 	}
 
+    {
+        size_t i;
+        char* buffer = kmalloc(2*req->cmd_req_len+1, GFP_ATOMIC);
+        buffer[0] = '\0';
+        for (i=0; i<req->cmd_req_len; i++) {
+                char sub_buf[3];
+                sprintf(sub_buf, "%02X", ((unsigned char*)req->cmd_req_buf)[i]);
+                strcat(buffer, sub_buf);
+        }
+        printk(KERN_INFO "CONTENT OF SEND CMD: %s\n", buffer);
+        kfree(buffer);
+    }
+
 	send_data_req.qsee_cmd_id = QSEOS_CLIENT_SEND_DATA_COMMAND;
 	send_data_req.app_id = data->client.app_id;
 	send_data_req.req_ptr = (void *)(__qseecom_uvirt_to_kphys(data,
@@ -951,6 +964,9 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 	send_data_req.rsp_ptr = (void *)(__qseecom_uvirt_to_kphys(data,
 					(uint32_t)req->resp_buf));
 	send_data_req.rsp_len = req->resp_len;
+
+    pr_err("Request pointer physical address: %p\n", send_data_req.req_ptr);
+    pr_err("Response pointer physical address: %p\n", send_data_req.rsp_ptr);
 
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1, (const void *) &send_data_req,
 					sizeof(send_data_req),
@@ -2505,6 +2521,50 @@ static int qseecom_save_partition_hash(void __user *argp)
 	return 0;
 }
 
+static int send_atomic_scm(void __user *argp)
+{
+    int ret = 0;
+	struct qseecom_send_atomic_scm_req req;
+	ret = copy_from_user(&req, argp, sizeof(req));
+	if (ret) {
+		pr_err("copy_from_user failed\n");
+		return ret;
+	}
+	pr_warning("Going to send atomic SCM request\n");
+    if (req.num_args == 1) {
+        ret = scm_call_atomic1(req.svc_id, req.cmd_id, req.arg1);
+    }
+    else if (req.num_args == 2) {
+        ret = scm_call_atomic2(req.svc_id, req.cmd_id, req.arg1, req.arg2);
+    }
+    else if (req.num_args == 3) {
+        ret = scm_call_atomic3(req.svc_id, req.cmd_id, req.arg1, req.arg2, req.arg3);
+    }
+    else if (req.num_args == 4) {
+        u32 ret1;
+        u32 ret2;
+        ret = scm_call_atomic4_3(req.svc_id, req.cmd_id, req.arg1, req.arg2, req.arg3, req.arg4, &ret1, &ret2);
+        pr_err("Atomic SCM RET1: %08X, RET2: %08X\n", ret1, ret2);
+    }
+	pr_warning("Finished raw SCM request\n");
+	return ret;
+}
+
+static int send_raw_scm(void __user *argp)
+{
+	int ret = 0;
+	struct qseecom_send_raw_scm_req req;
+	ret = copy_from_user(&req, argp, sizeof(req));
+	if (ret) {
+		pr_err("copy_from_user failed\n");
+		return ret;
+	}
+	pr_warning("Going to send raw SCM request (no remap error!)\n");
+	ret = scm_call_no_remap_error(req.svc_id, req.cmd_id, req.cmd_req_buf, req.cmd_req_len, req.resp_buf, req.resp_len);
+	pr_warning("Finished raw SCM request\n");
+	return ret;
+}
+
 static long qseecom_ioctl(struct file *file, unsigned cmd,
 		unsigned long arg)
 {
@@ -2735,6 +2795,22 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		mutex_unlock(&app_access_lock);
 		break;
 	}
+	case QSEECOM_IOCTL_SEND_RAW_SCM: {
+		atomic_inc(&data->ioctl_count);
+		ret = send_raw_scm(argp);
+		atomic_dec(&data->ioctl_count);
+    	flush_cache_all();
+	    outer_flush_all();
+		break;
+	}
+    case QSEECOM_IOCTL_SEND_ATOMIC_SCM: {
+		atomic_inc(&data->ioctl_count);
+		ret = send_atomic_scm(argp);
+		atomic_dec(&data->ioctl_count);
+    	flush_cache_all();
+	    outer_flush_all();        
+        break;
+    }
 	default:
 		return -EINVAL;
 	}
